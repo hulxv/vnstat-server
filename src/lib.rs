@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #[warn(unused_imports, unused)]
-use diesel;
+#[macro_use]
+extern crate diesel;
 use rocket;
 
 pub mod db;
