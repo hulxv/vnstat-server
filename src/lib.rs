@@ -1,5 +1,8 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-#[warn(unused_imports, unused)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 #[macro_use]
 extern crate diesel;
 use rocket;
