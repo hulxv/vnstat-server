@@ -1,15 +1,26 @@
-use diesel::prelude::Queryable;
+use diesel::sql_types::{Date,Text,Integer,Nullable};
 
-#[derive(Queryable, Debug)]
-pub struct Info {
-    pub id: i32,
-    pub name: String,
-    pub alias: String,
-    pub active: i32,
-    pub created: String,
-    pub updated: String,
-    pub rxcounter: i64,
-    pub txcounter: i64,
-    pub rxtotal: i64,
-    pub txtotal: i64,
+#[derive(Debug,QueryableByName)]
+pub struct Interface {
+    #[sql_type = "Integer"] pub id: i32,
+    #[sql_type = "Text"]    pub name: String,
+    #[sql_type = "Integer"] pub active: i32,
+    #[sql_type = "Date"]    pub created: String,
+    #[sql_type = "Date"]    pub updated: String,
+    #[sql_type = "Integer"] pub rxcounter: i32,
+    #[sql_type = "Integer"] pub txcounter: i32,
+    #[sql_type = "Integer"] pub rxtotal: i32,
+    #[sql_type = "Integer"] pub txtotal: i32,
 }
+
+
+// id
+// name
+// alias
+// active
+// created
+// updated
+// rxcounter
+// txcounter
+// rxtotal
+// txtotal

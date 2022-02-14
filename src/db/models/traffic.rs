@@ -1,10 +1,10 @@
-use diesel::prelude::Queryable;
+use diesel::sql_types::{Text,Integer};
 
-#[derive(Queryable, Debug)]
+#[derive(Debug,QueryableByName)]
 pub struct Traffic {
-    pub id: i32,
-    pub interface: i32,
-    pub date: String,
-    pub rx: i64,
-    pub tx: i64,
+    #[sql_type = "Integer"] pub id: i32,
+    #[sql_type = "Integer"] pub interface: i32,
+    #[sql_type = "Text"]    pub date: String,
+    #[sql_type = "Integer"] pub rx: i32,
+    #[sql_type = "Integer"] pub tx: i32,
 }

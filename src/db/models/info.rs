@@ -1,8 +1,8 @@
-use diesel::prelude::Queryable;
+use diesel::sql_types::{Text,Integer};
 
-#[derive(Queryable, Debug)]
+#[derive(Debug,QueryableByName)]
 pub struct Info {
-    pub id: i32,
-    pub name: String,
-    pub value: String,
+    #[sql_type = "Integer"] pub id: i32,
+    #[sql_type = "Text"]    pub name: String,
+    #[sql_type = "Text"]    pub value: String,
 }
