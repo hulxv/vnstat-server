@@ -1,8 +1,12 @@
-use diesel::sql_types::{Text,Integer};
+use diesel::sql_types::{Integer, Text};
+use serde::Serialize;
 
-#[derive(Debug,QueryableByName)]
+#[derive(Debug, QueryableByName, Serialize)]
 pub struct Info {
-    #[sql_type = "Integer"] pub id: i32,
-    #[sql_type = "Text"]    pub name: String,
-    #[sql_type = "Text"]    pub value: String,
+    #[sql_type = "Integer"]
+    pub id: i32,
+    #[sql_type = "Text"]
+    pub name: String,
+    #[sql_type = "Text"]
+    pub value: String,
 }

@@ -19,7 +19,8 @@ pub fn rocket_launcher() -> rocket::Rocket {
             routes::config::edit_configs,
             routes::config::get_configs,
             routes::daemon::change_daemon_status,
-            routes::daemon::get_daemon_status
+            routes::daemon::get_daemon_status,
+            routes::interface::get_interfaces
         ],
     )
 }

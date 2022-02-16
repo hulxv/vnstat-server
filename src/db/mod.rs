@@ -12,13 +12,10 @@ use diesel::{
     dsl::sql_query,
     prelude::{Connection, SqliteConnection},
     query_builder::SqlQuery,
-    RunQueryDsl
+    RunQueryDsl,
 };
 use models::{info::Info, interface::Interface, traffic::Traffic};
 pub mod models;
-
-
-
 
 const DEFAULT_DATABASE_PATH: &str = "/var/lib/vnstat/vnstat.db";
 pub struct Database {
@@ -27,7 +24,7 @@ pub struct Database {
 }
 
 impl Database {
-   pub fn new(path: &str) -> Result<Self, Error> {
+    pub fn new(path: &str) -> Result<Self, Error> {
         match Path::new(path).exists() {
             false => Err(Error::new(
                 NotFound,
@@ -39,10 +36,10 @@ impl Database {
             }),
         }
     }
-   pub fn default() -> Result<Self, Error> {
-       if!Path::new(DEFAULT_DATABASE_PATH).exists() {
-           return Err(Error::new(NotFound,format!("Default database file ({}) is not found, You should create sqlite db file in default vnStat database path.", DEFAULT_DATABASE_PATH)));
-       }
+    pub fn default() -> Result<Self, Error> {
+        if !Path::new(DEFAULT_DATABASE_PATH).exists() {
+            return Err(Error::new(NotFound,format!("Default database file ({}) is not found, You should create sqlite db file in default vnStat database path.", DEFAULT_DATABASE_PATH)));
+        }
         match Path::new(DEFAULT_DATABASE_PATH).exists() {
             false => Err(Error::new(
                 NotFound,
@@ -55,7 +52,7 @@ impl Database {
         }
     }
 
-   pub fn connect(&mut self) -> Result<&mut Self, Error> {
+    pub fn connect(&mut self) -> Result<&mut Self, Error> {
         match SqliteConnection::establish(self.path.as_str()) {
             Err(err) => Err(Error::new(Interrupted, err)),
             Ok(conn) => {
@@ -65,12 +62,9 @@ impl Database {
         }
     }
 
-    pub fn select_table<T>(
-        &mut self,
-        table: &'static str
-    ) -> Result<Vec<T>, String> 
-        where
-        T: diesel::deserialize::QueryableByName<diesel::sqlite::Sqlite>
+    pub fn select_table<T>(&mut self, table: String) -> Result<Vec<T>, String>
+    where
+        T: diesel::deserialize::QueryableByName<diesel::sqlite::Sqlite>,
     {
         match self.conn.is_some() {
             true => match sql_query(format!("SELECT * from {}", table))
@@ -141,13 +135,16 @@ fn database_connection_with_exists_path() {
 
 #[test]
 fn select_data_from_table() {
-   for (i,value) in Database::default()
-            .unwrap()
-            .connect()
-            .unwrap()
-            .select_table::<Interface>("interface").unwrap().iter().enumerate() {
-                println!("{value:?}");
-                
-        }
+    for (i, value) in Database::default()
+        .unwrap()
+        .connect()
+        .unwrap()
+        .select_table::<Interface>("interface".to_owned())
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
+        println!("{value:?}");
+    }
     assert!(true);
 }
