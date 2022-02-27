@@ -5,13 +5,25 @@
 
 #[macro_use]
 extern crate diesel;
-use rocket;
+use rocket::{
+    config::{Config, Environment},
+    fairing::AdHoc,
+};
+use std::io::Write;
 
+pub mod app;
 pub mod db;
 pub mod routes;
+pub mod utils;
 
 pub fn rocket_launcher() -> rocket::Rocket {
-    rocket::ignite().mount(
+    let server_config = Config::build(Environment::Staging)
+        .address("0.0.0.0")
+        .port(8800)
+        .finalize()
+        .unwrap();
+
+    rocket::custom(server_config).mount(
         "/",
         rocket::routes![
             routes::traffic::get_traffic,

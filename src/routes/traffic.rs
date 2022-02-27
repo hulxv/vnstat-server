@@ -1,14 +1,12 @@
-use std::vec;
-
 use rocket::*;
 use rocket_contrib::json::Json;
 use serde::Serialize;
-
-use crate::db::{models::traffic::Traffic, Database};
 use std::io::{
     Error,
     ErrorKind::{Interrupted, InvalidData, InvalidInput, NotFound},
 };
+
+use crate::db::{models::traffic::Traffic, Database};
 
 #[get("/traffic/<interval>")]
 pub fn get_traffic(interval: String) -> Result<Json<Vec<Traffic>>, Json<Error>> {
