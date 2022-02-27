@@ -12,3 +12,5 @@ rocket_contrib = { version = "0.4.10", features = ["json"] }
 serde = { version = "1.0.13", features = ["derive"] }
 serde_json = "1.0.59"
 diesel = { version = "1.4.8", default-features = false, features = ["sqlite"] }
+dirs = "4.0.0"
+tokio = { version = "1.17.0", features = ["full"] }
