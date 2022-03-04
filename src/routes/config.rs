@@ -1,25 +1,26 @@
-use rocket::*;
-use rocket_contrib::json::Json;
 use serde::{ser::SerializeTupleStruct, Serialize};
 use std::fs;
 
+use actix_web::{get, post, web, HttpResponse, Result};
+use serde_json::json;
 use std::io::{
     Error,
     ErrorKind::{Interrupted, InvalidData, NotFound},
 };
 
+use crate::http::response::*;
+
 const VNSTAT_CONFIG_FILE_PATH: &str = "/etc/vnstat.test.conf";
 
-#[get("/config")]
-pub fn get_configs() -> Result<(), String> {
+#[get("/daemon")]
+pub async fn get_daemon_status() -> Result<HttpResponse> {
     todo!()
 }
 
-#[post("/config")]
-pub fn edit_configs() -> Result<(), String> {
+#[post("/daemon")]
+pub async fn change_daemon_status(status: String) -> Result<HttpResponse> {
     todo!()
 }
-
 #[derive(Debug, Clone, Serialize)]
 struct ConfigProp {
     pub name: String,

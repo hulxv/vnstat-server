@@ -6,7 +6,6 @@ use std::{
     path::Path,
 };
 
-use config::Config;
 use dirs;
 
 use crate::utils::create_file;
@@ -54,7 +53,7 @@ impl AppConfigs {
             None => panic!("Can't find \"~/.config\" directory"),
         };
         let file_path = [config_dir.unwrap(), "/vcs/vcs.config.toml".to_owned()].concat();
-        match Path::new(&file_path).exists() {
+        let _ = match Path::new(&file_path).exists() {
             false => {
                 let mut file = create_file(&file_path).unwrap();
 
@@ -73,9 +72,9 @@ impl AppConfigs {
                         );
                         Ok(())
                     }
-                };
+                }
             }
-            _ => (),
+            _ => Ok(()),
         };
 
         Ok(AppConfigs { props: None })

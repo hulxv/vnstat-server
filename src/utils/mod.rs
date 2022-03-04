@@ -7,9 +7,9 @@ use std::{
 pub fn create_file(file_path: &str) -> Result<File> {
     let path = Path::new(file_path);
     match Path::new(path.parent().unwrap()).exists() {
-        false => std::fs::create_dir_all(path.parent().unwrap()).unwrap(),
+        false => std::fs::create_dir_all(path.parent().unwrap())?,
         _ => (),
     };
-    let mut file = File::create(path).unwrap();
+    let file = File::create(path)?;
     Ok(file)
 }

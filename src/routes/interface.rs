@@ -1,22 +1,24 @@
-use rocket::*;
-use rocket_contrib::json::Json;
-use serde::Serialize;
-use std::io::{
-    Error,
-    ErrorKind::{Interrupted, InvalidData, InvalidInput, NotFound},
+use serde_json::json;
+
+use crate::{
+    http::response::*,
+    vnstat::db::{models::interface::Interface, Database},
 };
-
-use crate::db::{models::interface::Interface, Database};
-
+use actix_web::{get, HttpResponse, Result};
 #[get("/interface")]
-pub fn get_interfaces() -> Result<Json<Vec<Interface>>, Json<Error>> {
-    match Database::default()
-        .unwrap()
-        .connect()
-        .unwrap()
+pub async fn get_interfaces() -> Result<HttpResponse> {
+    match Database::default()?
+        .connect()?
         .select_table::<Interface>("interface".to_owned())
     {
-        Ok(result) => Ok(Json(result)),
-        Err(err) => Err(Json(Error::new(Interrupted, format!("{}", err)))),
+        Ok(result) => {
+            Ok(HttpResponse::Ok().json(json!(Response::<Vec<Interface>>::new("success", result))))
+        }
+        Err(err) => Ok(
+            HttpResponse::BadRequest().json(json!(ResponseError::new_response(
+                format!("{err:?}").as_str(),
+                502
+            ))),
+        ),
     }
 }

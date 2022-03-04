@@ -6,11 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.19"
-rocket = "0.4.10"
-rocket_contrib = { version = "0.4.10", features = ["json"] }
 serde = { version = "1.0.13", features = ["derive"] }
 serde_json = "1.0.59"
 diesel = { version = "1.4.8", default-features = false, features = ["sqlite"] }
 dirs = "4.0.0"
 tokio = { version = "1.17.0", features = ["full"] }
+actix-web = "4.0.1"

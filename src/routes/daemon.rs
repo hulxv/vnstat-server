@@ -1,12 +1,14 @@
-use rocket::*;
-use rocket_contrib::json::Json;
-use serde::Serialize;
+use actix_web::{get, post, web, HttpResponse, Result};
+use serde_json::json;
+
+use crate::http::response::*;
+
 #[get("/daemon")]
-pub fn get_daemon_status() -> Result<(), String> {
-    Ok(())
+pub async fn get_daemon_status() -> Result<HttpResponse> {
+    todo!()
 }
 
-#[post("/daemon/<status>")]
-pub fn change_daemon_status(status: String) -> Result<(), String> {
-    Ok(())
+#[post("/daemon")]
+pub async fn change_daemon_status(status: String) -> Result<HttpResponse> {
+    todo!()
 }

@@ -5,34 +5,30 @@
 
 #[macro_use]
 extern crate diesel;
-use rocket::{
-    config::{Config, Environment},
-    fairing::AdHoc,
-};
-use std::io::Write;
+extern crate actix_web;
+use actix_web::{App, HttpServer};
 
 pub mod app;
-pub mod db;
+pub mod http;
 pub mod routes;
 pub mod utils;
+pub mod vnstat;
 
-pub fn rocket_launcher() -> rocket::Rocket {
-    let server_config = Config::build(Environment::Staging)
-        .address("0.0.0.0")
-        .port(8800)
-        .finalize()
-        .unwrap();
-
-    rocket::custom(server_config).mount(
-        "/",
-        rocket::routes![
-            routes::traffic::get_traffic,
-            routes::info::get_info,
-            routes::config::edit_configs,
-            routes::config::get_configs,
-            routes::daemon::change_daemon_status,
-            routes::daemon::get_daemon_status,
-            routes::interface::get_interfaces
-        ],
-    )
+#[actix_web::main]
+pub async fn run_server() -> std::io::Result<()> {
+    println!("Server launched on 127.0.0.1:8080");
+    match HttpServer::new(|| {
+        App::new()
+            .service(routes::traffic::get_traffic)
+            .service(routes::interface::get_interfaces)
+            .service(routes::info::get_info)
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
+    {
+        Err(err) => eprintln!("{err}"),
+        _ => (),
+    }
+    Ok(())
 }

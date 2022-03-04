@@ -1,3 +1,5 @@
+pub mod models;
+
 use core::fmt;
 use std::{
     fmt::Debug,
@@ -15,8 +17,6 @@ use diesel::{
     RunQueryDsl,
 };
 use models::{info::Info, interface::Interface, traffic::Traffic};
-pub mod models;
-
 const DEFAULT_DATABASE_PATH: &str = "/var/lib/vnstat/vnstat.db";
 pub struct Database {
     pub path: String,
