@@ -1,3 +1,6 @@
+use diesel::expression::subselect::ValidSubselect;
+use dirs;
+use serde_derive::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt,
@@ -5,49 +8,22 @@ use std::{
     io::{Error, ErrorKind::Interrupted, Write},
     path::Path,
 };
-
-use dirs;
+use toml::{map::Map, ser, value::Value};
 
 use crate::utils::create_file;
 
-struct AppConfigProp {
-    name: String,
-    value: String,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Configs {
+    pub server: ServerConfigs,
+    pub auth: AuthConfigs,
 }
 
-impl AppConfigProp {
-    fn from_hashmap(props: HashMap<&str, &str>) -> Vec<AppConfigProp> {
-        let mut container: Vec<AppConfigProp> = Vec::new();
-        for prop in props {
-            container.push(AppConfigProp {
-                name: prop.0.to_owned(),
-                value: prop.1.to_owned(),
-            })
-        }
-        container
+impl Configs {
+    fn from(server: ServerConfigs, auth: AuthConfigs) -> Self {
+        Self { server, auth }
     }
-    fn as_string(&self) -> String {
-        format!("{}", self)
-    }
-}
 
-impl fmt::Debug for AppConfigProp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} = {}\n", self.name, self.value)
-    }
-}
-impl fmt::Display for AppConfigProp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} = {}\n", self.name, self.value)
-    }
-}
-
-struct AppConfigs {
-    props: Option<Vec<AppConfigProp>>,
-}
-
-impl AppConfigs {
-    fn init() -> Result<Self, Error> {
+    pub fn init() -> Result<Self, Error> {
         let config_dir = match dirs::config_dir() {
             Some(path) => path.into_os_string().into_string(),
             None => panic!("Can't find \"~/.config\" directory"),
@@ -56,14 +32,9 @@ impl AppConfigs {
         let _ = match Path::new(&file_path).exists() {
             false => {
                 let mut file = create_file(&file_path).unwrap();
+                let configs_as_string = Self::default().to_string().unwrap();
 
-                let mut props_as_string = String::from("");
-
-                Self::default_props()
-                    .iter()
-                    .for_each(|prop| props_as_string.push_str(format!("{}", prop).as_str()));
-
-                match file.write_all(props_as_string.as_bytes()) {
+                match file.write_all(configs_as_string.as_bytes()) {
                     Err(e) => Err(e),
                     Ok(_) => {
                         println!(
@@ -77,26 +48,96 @@ impl AppConfigs {
             _ => Ok(()),
         };
 
-        Ok(AppConfigs { props: None })
+        Ok(Self::default())
     }
-    fn get_props(&self) -> Result<Vec<AppConfigProp>, Error> {
+    pub fn get_props(&self) -> Result<Vec<Self>, Error> {
         todo!()
     }
-    fn default_props() -> Vec<AppConfigProp> {
-        let default_props: HashMap<&str, &str> =
-            HashMap::from([("address", "0.0.0.0"), ("port", "8888")]);
+    pub fn default() -> Self {
+        Configs::from(
+            ServerConfigs::from("0.0.0.0", 8080),
+            AuthConfigs::from("1234"),
+        )
+    }
+    pub fn reset_props(&self) -> Result<(), Error> {
+        todo!()
+    }
+    pub fn to_string(&self) -> Result<String, ser::Error> {
+        toml::to_string(self)
+    }
+}
 
-        AppConfigProp::from_hashmap(default_props)
+#[derive(Serialize, Deserialize, Debug)]
+
+pub struct ServerConfigs {
+    pub ip: String,
+    pub port: i32,
+}
+
+impl ServerConfigs {
+    fn from(ip: &'static str, port: i32) -> Self {
+        Self {
+            ip: ip.to_owned(),
+            port,
+        }
     }
-    fn reset_props(&self) -> Result<(), Error> {
-        todo!()
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AuthConfigs {
+    pub password: String,
+}
+
+impl AuthConfigs {
+    fn from(password: &'static str) -> Self {
+        Self {
+            password: password.to_owned(),
+        }
     }
 }
 
 #[test]
 
-fn build_configuration_file() {
-    AppConfigs::init();
+pub fn test_default_configs() {
+    let configs_as_string = Configs::default()
+        .to_string()
+        .unwrap()
+        .parse::<Value>()
+        .unwrap();
+
+    assert_eq!(
+        configs_as_string
+            .get("auth")
+            .unwrap()
+            .get("password")
+            .unwrap()
+            .as_str(),
+        Some("1234")
+    );
+    assert_eq!(
+        configs_as_string
+            .get("server")
+            .unwrap()
+            .get("ip")
+            .unwrap()
+            .as_str(),
+        Some("0.0.0.0")
+    );
+    assert_eq!(
+        configs_as_string
+            .get("server")
+            .unwrap()
+            .get("port")
+            .unwrap()
+            .as_integer(),
+        Some(8080)
+    );
+    assert!(true)
+}
+
+#[test]
+pub fn build_configuration_file() {
+    Configs::init().unwrap();
 
     assert!(true)
 }
