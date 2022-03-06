@@ -1,11 +1,14 @@
-use diesel::expression::subselect::ValidSubselect;
 use dirs;
 use serde_derive::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    borrow::BorrowMut,
     fmt,
-    fs::File,
-    io::{Error, ErrorKind::Interrupted, Write},
+    fs::{self, File},
+    io::{
+        Error,
+        ErrorKind::{Interrupted, NotFound},
+        Result, Write,
+    },
     path::Path,
 };
 use toml::{map::Map, ser, value::Value};
@@ -23,47 +26,101 @@ impl Configs {
         Self { server, auth }
     }
 
-    pub fn init() -> Result<Self, Error> {
-        let config_dir = match dirs::config_dir() {
-            Some(path) => path.into_os_string().into_string(),
-            None => panic!("Can't find \"~/.config\" directory"),
-        };
-        let file_path = [config_dir.unwrap(), "/vcs/vcs.config.toml".to_owned()].concat();
-        let _ = match Path::new(&file_path).exists() {
-            false => {
-                let mut file = create_file(&file_path).unwrap();
-                let configs_as_string = Self::default().to_string().unwrap();
-
-                match file.write_all(configs_as_string.as_bytes()) {
-                    Err(e) => Err(e),
-                    Ok(_) => {
-                        println!(
-                            "Configuration file was created successfully (in {})",
-                            file_path
-                        );
-                        Ok(())
-                    }
-                }
-            }
+    pub fn init() -> Result<Self> {
+        let _ = match Path::new(&Self::get_file_path()?).exists() {
+            false => Self::build_from(Self::default().to_string().unwrap()),
             _ => Ok(()),
         };
 
         Ok(Self::default())
     }
-    pub fn get_props(&self) -> Result<Vec<Self>, Error> {
-        todo!()
+    pub fn build_from(content: String) -> Result<()> {
+        let mut file = create_file(&Self::get_file_path()?)?;
+        match file.write_all(content.as_bytes()) {
+            Err(e) => Err(e),
+            Ok(_) => {
+                println!(
+                    "Configuration file was created successfully (in {})",
+                    &Self::get_file_path()?
+                );
+                Ok(())
+            }
+        }
     }
+
     pub fn default() -> Self {
         Configs::from(
             ServerConfigs::from("0.0.0.0", 8080),
             AuthConfigs::from("1234"),
         )
     }
-    pub fn reset_props(&self) -> Result<(), Error> {
-        todo!()
+    pub fn reset_props(&self) -> Result<()> {
+        match fs::remove_file(Self::get_file_path()?) {
+            Err(err) => return Err(err),
+            _ => (),
+        };
+        let mut file = create_file(&Self::get_file_path()?)?;
+        match file.write_all(Self::default().to_string().unwrap().as_bytes()) {
+            Err(e) => return Err(e),
+            Ok(_) => {
+                println!("Configuration file was reset successfully",);
+            }
+        };
+        Ok(())
     }
-    pub fn to_string(&self) -> Result<String, ser::Error> {
-        toml::to_string(self)
+    pub fn to_string(&self) -> std::result::Result<String, ser::Error> {
+        Ok(toml::to_string(self)?)
+    }
+
+    pub fn get(&self, query: &str) -> Option<Value> {
+        /*
+         * Convert 'query' to keys to get 'toml::value::Value'
+         *
+         * - Example
+         *  - Toml content
+         *     '
+         *         [foo]
+         *         boo = "hi"
+         *     '
+         * query = "foo.boo" ===> "hi"
+         */
+        let keys: Vec<&str> = query.split(".").map(|e| e.trim()).collect::<Vec<&str>>();
+
+        // * Convert Configs to string and parse it to 'toml::value::Value'
+        let configs_as_string = self.to_string().unwrap().as_str().parse::<Value>().unwrap();
+
+        let mut value: Option<&Value> = None;
+
+        for key in keys.iter() {
+            let next_val = if let None = value {
+                configs_as_string.get(key)
+            } else {
+                value?.get(key)
+            };
+            if let None = next_val {
+                return None;
+            }
+            value = match value {
+                // * value will be 'Option::None' in first loop
+                None => configs_as_string.get(key),
+
+                Some(val) => next_val,
+            };
+        }
+        Some(value?.to_owned())
+    }
+
+    pub fn get_file_path() -> Result<String> {
+        let config_dir = match dirs::config_dir() {
+            Some(path) => path.into_os_string().into_string(),
+            None => {
+                return Err(Error::new(
+                    NotFound,
+                    "Can't find \"~/.config\" directory".to_owned(),
+                ))
+            }
+        };
+        Ok([config_dir.unwrap(), "/vcs/vcs.config.toml".to_owned()].concat())
     }
 }
 
@@ -99,45 +156,32 @@ impl AuthConfigs {
 #[test]
 
 pub fn test_default_configs() {
-    let configs_as_string = Configs::default()
-        .to_string()
-        .unwrap()
-        .parse::<Value>()
-        .unwrap();
+    let configs = Configs::default();
 
-    assert_eq!(
-        configs_as_string
-            .get("auth")
-            .unwrap()
-            .get("password")
-            .unwrap()
-            .as_str(),
-        Some("1234")
-    );
-    assert_eq!(
-        configs_as_string
-            .get("server")
-            .unwrap()
-            .get("ip")
-            .unwrap()
-            .as_str(),
-        Some("0.0.0.0")
-    );
-    assert_eq!(
-        configs_as_string
-            .get("server")
-            .unwrap()
-            .get("port")
-            .unwrap()
-            .as_integer(),
-        Some(8080)
-    );
+    assert_eq!(configs.get("auth.password").unwrap().as_str(), Some("1234"));
+    assert_eq!(configs.get("server.ip").unwrap().as_str(), Some("0.0.0.0"));
+    assert_eq!(configs.get("server.port").unwrap().as_integer(), Some(8080));
+    assert!(true)
+}
+#[test]
+pub fn test_get_prop_from_configs() {
+    let configs = Configs::default();
+
+    assert_eq!(configs.get("auth.password").unwrap().as_str(), Some("1234"));
+    assert_eq!(configs.get("server.ip").unwrap().as_str(), Some("0.0.0.0"));
+    assert_eq!(configs.get("server.port").unwrap().as_integer(), Some(8080));
+    assert_eq!(configs.get("foo.boo"), None);
     assert!(true)
 }
 
 #[test]
-pub fn build_configuration_file() {
+pub fn test_build_configuration_file() {
     Configs::init().unwrap();
 
+    assert!(true)
+}
+#[test]
+fn test_get_configuration_file_path() {
+    Configs::get_file_path().unwrap();
     assert!(true)
 }
