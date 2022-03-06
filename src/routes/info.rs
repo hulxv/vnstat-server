@@ -7,10 +7,8 @@ use serde_json::json;
 
 #[get("/info")]
 pub async fn get_info() -> Result<HttpResponse> {
-    match Database::default()
-        .unwrap()
-        .connect()
-        .unwrap()
+    match Database::default()?
+        .connect()?
         .select_table::<Info>("info".to_owned())
     {
         Ok(result) => {
