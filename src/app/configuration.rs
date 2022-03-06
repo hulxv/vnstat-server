@@ -1,43 +1,52 @@
+use anyhow::{anyhow, Result};
 use dirs;
 use serde_derive::{Deserialize, Serialize};
 use std::{
-    borrow::BorrowMut,
-    fmt,
     fs::{self, File},
     io::{
         Error,
         ErrorKind::{Interrupted, NotFound},
-        Result, Write,
+        Write,
     },
     path::Path,
 };
-use toml::{map::Map, ser, value::Value};
+use toml::{ser, value::Value};
 
 use crate::utils::create_file;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configs {
     pub server: ServerConfigs,
     pub auth: AuthConfigs,
 }
 
 impl Configs {
-    fn from(server: ServerConfigs, auth: AuthConfigs) -> Self {
+    pub fn from(server: ServerConfigs, auth: AuthConfigs) -> Self {
         Self { server, auth }
+    }
+
+    pub fn default() -> Self {
+        Configs::from(
+            ServerConfigs::from("0.0.0.0", 8080),
+            AuthConfigs::from("1234"),
+        )
     }
 
     pub fn init() -> Result<Self> {
         let _ = match Path::new(&Self::get_file_path()?).exists() {
-            false => Self::build_from(Self::default().to_string().unwrap()),
+            false => Self::build_from(Self::default().to_string()?),
             _ => Ok(()),
         };
 
-        Ok(Self::default())
+        Ok(toml::from_str(
+            fs::read_to_string(Self::get_file_path()?)?.as_str(),
+        )?)
     }
+
     pub fn build_from(content: String) -> Result<()> {
         let mut file = create_file(&Self::get_file_path()?)?;
         match file.write_all(content.as_bytes()) {
-            Err(e) => Err(e),
+            Err(err) => Err(anyhow!(err)),
             Ok(_) => {
                 println!(
                     "Configuration file was created successfully (in {})",
@@ -48,20 +57,14 @@ impl Configs {
         }
     }
 
-    pub fn default() -> Self {
-        Configs::from(
-            ServerConfigs::from("0.0.0.0", 8080),
-            AuthConfigs::from("1234"),
-        )
-    }
-    pub fn reset_props(&self) -> Result<()> {
+    pub fn reset(&self) -> Result<()> {
         match fs::remove_file(Self::get_file_path()?) {
-            Err(err) => return Err(err),
+            Err(err) => return Err(anyhow!(err)),
             _ => (),
         };
         let mut file = create_file(&Self::get_file_path()?)?;
-        match file.write_all(Self::default().to_string().unwrap().as_bytes()) {
-            Err(e) => return Err(e),
+        match file.write_all(Self::default().to_string()?.as_bytes()) {
+            Err(err) => return Err(anyhow!(err)),
             Ok(_) => {
                 println!("Configuration file was reset successfully",);
             }
@@ -114,17 +117,17 @@ impl Configs {
         let config_dir = match dirs::config_dir() {
             Some(path) => path.into_os_string().into_string(),
             None => {
-                return Err(Error::new(
+                return Err(anyhow!(Error::new(
                     NotFound,
                     "Can't find \"~/.config\" directory".to_owned(),
-                ))
+                )))
             }
         };
         Ok([config_dir.unwrap(), "/vcs/vcs.config.toml".to_owned()].concat())
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 
 pub struct ServerConfigs {
     pub ip: String,
@@ -140,7 +143,7 @@ impl ServerConfigs {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthConfigs {
     pub password: String,
 }

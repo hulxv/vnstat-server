@@ -19,7 +19,7 @@ pub async fn cli_runner() {
                     println!("Running server...");
                     thread::spawn(|| {
                         println!("...",);
-                        run_server()
+                        run_server().unwrap()
                     });
                 }
                 "exit" | "q" | "quit" => {

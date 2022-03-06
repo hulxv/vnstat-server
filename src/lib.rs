@@ -15,20 +15,22 @@ pub mod utils;
 pub mod vnstat;
 
 #[actix_web::main]
-pub async fn run_server() -> std::io::Result<()> {
-    println!("Server launched on 127.0.0.1:8080");
+pub async fn run_server() -> anyhow::Result<()> {
+    let configs = app::configuration::Configs::init()?;
+    let (ip, port) = (configs.server.ip, configs.server.port as u16);
+    println!("Server launched on {ip}:{port}");
     match HttpServer::new(|| {
         App::new()
             .service(routes::traffic::get_traffic)
             .service(routes::interface::get_interfaces)
             .service(routes::info::get_info)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((ip, port))?
     .run()
     .await
     {
-        Err(err) => eprintln!("{err}"),
+        Err(err) => return Err(anyhow::anyhow!(err)),
         _ => (),
-    }
+    };
     Ok(())
 }
