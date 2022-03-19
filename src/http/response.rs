@@ -1,26 +1,17 @@
 use serde::Serialize;
-#[derive(Serialize, Clone)]
+#[derive(Serialize)]
 pub struct ResponseError {
-    pub cause: String,
+    pub error: String,
     pub code: i32,
 }
 
 impl ResponseError {
-    pub fn new(cause: &str, code: i32) -> Self {
-        Self {
-            cause: cause.to_owned(),
-            code,
-        }
+    pub fn new(error: String, code: i32) -> Self {
+        Self { error, code }
     }
 
-    pub fn new_response(cause: &str, code: i32) -> Response<Self> {
-        Response::<Self>::new(
-            "error",
-            Self {
-                cause: cause.to_owned(),
-                code,
-            },
-        )
+    pub fn new_response(error: String, code: i32) -> Response<Self> {
+        Response::<Self>::new("error", Self { error, code })
     }
 }
 

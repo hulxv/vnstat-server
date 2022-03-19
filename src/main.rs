@@ -5,22 +5,19 @@ use std::{
 
 use vcs::*;
 
-pub async fn cli_runner() {
+pub fn cli_runner() {
     println!(
         "VCS is running, Use it by enter commands or type \".help\" to show available commands or type \"q\" to quit."
     );
     loop {
-        print!("~> ",);
+        print!("vcs ~> ",);
         io::stdout().flush().unwrap();
         let mut input = String::new();
         match std::io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim().to_lowercase().as_str() {
                 "run" => {
                     println!("Running server...");
-                    thread::spawn(|| {
-                        println!("...",);
-                        run_server().unwrap()
-                    });
+                    thread::spawn(|| run_server().unwrap());
                 }
                 "exit" | "q" | "quit" => {
                     println!("Program has been terminated");
@@ -28,16 +25,16 @@ pub async fn cli_runner() {
                 }
                 _ => (),
             },
-            Err(err) => panic!("{}", err),
+            Err(err) => eprintln!("{}", err),
         }
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ()> {
-    println!("Hello !");
-    tokio::spawn(async {
-        cli_runner().await;
-    });
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tokio::task::spawn_blocking(|| {
+        cli_runner();
+    })
+    .await?;
     Ok(())
 }

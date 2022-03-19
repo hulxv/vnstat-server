@@ -1,3 +1,5 @@
+use std::io::Error as StdError;
+
 use serde_json::json;
 
 use crate::{
@@ -7,18 +9,16 @@ use crate::{
 use actix_web::{get, HttpResponse, Result};
 #[get("/interface")]
 pub async fn get_interfaces() -> Result<HttpResponse> {
-    match Database::default()?
-        .connect()?
+    match Database::default()
+        .unwrap()
+        .connect()
+        .unwrap()
         .select_table::<Interface>("interface".to_owned())
     {
         Ok(result) => {
             Ok(HttpResponse::Ok().json(json!(Response::<Vec<Interface>>::new("success", result))))
         }
-        Err(err) => Ok(
-            HttpResponse::BadRequest().json(json!(ResponseError::new_response(
-                format!("{err:?}").as_str(),
-                502
-            ))),
-        ),
+        Err(err) => Ok(HttpResponse::BadRequest()
+            .json(json!(ResponseError::new_response(err.to_string(), 502)))),
     }
 }
