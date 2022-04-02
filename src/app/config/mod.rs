@@ -1,78 +1,99 @@
+use crate::utils::file::File;
 use anyhow::{anyhow, Result};
 use dirs;
 use serde_derive::{Deserialize, Serialize};
 use std::{
-    fs::{self, File},
+    fs,
     io::{
         Error,
         ErrorKind::{Interrupted, NotFound},
-        Write,
     },
-    path::Path,
 };
-use toml::{ser, value::Value};
+use toml::{de, ser, value::Value};
 
-use crate::utils::create_file;
+pub mod auth;
+pub mod server;
+pub mod vnstat;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+use self::{auth::AuthConfigs, server::ServerConfigs, vnstat::VnstatConfigs};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Configs {
     pub server: ServerConfigs,
     pub auth: AuthConfigs,
+    pub vnstat: VnstatConfigs,
 }
 
 impl Configs {
-    pub fn from(server: ServerConfigs, auth: AuthConfigs) -> Self {
-        Self { server, auth }
+    pub fn from(server: ServerConfigs, auth: AuthConfigs, vnstat: VnstatConfigs) -> Self {
+        Self {
+            server,
+            auth,
+            vnstat,
+        }
+    }
+
+    pub fn is_any_prop_missing() -> bool {
+        toml::from_str::<Self>(
+            fs::read_to_string(Self::get_file_path().unwrap())
+                .unwrap()
+                .as_str(),
+        )
+        .is_err()
     }
 
     pub fn default() -> Self {
         Configs::from(
             ServerConfigs::from("0.0.0.0", 8080),
             AuthConfigs::from("1234"),
+            VnstatConfigs::from("/etc/vnstat.conf"),
         )
     }
 
     pub fn init() -> Result<Self> {
-        let _ = match Path::new(&Self::get_file_path()?).exists() {
-            false => Self::build_from(Self::default().to_string()?),
+        let path = Self::get_file_path()?;
+        let _ = match File::new(path.clone()).exists() {
+            false => File::new(path.clone()).create(Self::default().to_string()?),
             _ => Ok(()),
         };
 
+        match Self::is_any_prop_missing() {
+            true => {
+                println!("Some properties are missing, so we need to reset the configuration file so that it won't do any harm.");
+                match Self::reset() {
+                    Err(e) => return Err(anyhow!("operation failed: {}", e)),
+                    Ok(_) => {
+                        println!(
+                            "[{}]Configuration file was reset successfully.",
+                            Self::get_file_path()?
+                        );
+                    }
+                }
+            }
+            _ => (),
+        }
         Ok(toml::from_str(
             fs::read_to_string(Self::get_file_path()?)?.as_str(),
         )?)
     }
 
-    pub fn build_from(content: String) -> Result<()> {
-        let mut file = create_file(&Self::get_file_path()?)?;
-        match file.write_all(content.as_bytes()) {
-            Err(err) => Err(anyhow!(err)),
-            Ok(_) => {
-                println!(
-                    "Configuration file was created successfully (in {})",
-                    &Self::get_file_path()?
-                );
-                Ok(())
-            }
-        }
-    }
-
-    pub fn reset(&self) -> Result<()> {
-        match fs::remove_file(Self::get_file_path()?) {
+    pub fn reset() -> Result<()> {
+        let path = Self::get_file_path()?;
+        match fs::remove_file(&path) {
             Err(err) => return Err(anyhow!(err)),
             _ => (),
         };
-        let mut file = create_file(&Self::get_file_path()?)?;
-        match file.write_all(Self::default().to_string()?.as_bytes()) {
+        match File::new(path.clone()).create(Self::default().to_string()?) {
             Err(err) => return Err(anyhow!(err)),
-            Ok(_) => {
-                println!("Configuration file was reset successfully",);
-            }
-        };
-        Ok(())
+            Ok(_) => Ok(()),
+        }
     }
-    pub fn to_string(&self) -> std::result::Result<String, ser::Error> {
-        Ok(toml::to_string(self)?)
+
+    pub fn to_string(&self) -> Result<String> {
+        match toml::to_string(self) {
+            Ok(r) => Ok(r),
+            Err(e) => Err(anyhow!(e)),
+        }
     }
 
     pub fn get(&self, query: &str) -> Option<Value> {
@@ -80,12 +101,14 @@ impl Configs {
          * Convert 'query' to keys to get 'toml::value::Value'
          *
          * - Example
-         *  - Toml content
+         *  - Toml content:
          *     '
          *         [foo]
          *         boo = "hi"
          *     '
-         * query = "foo.boo" ===> "hi"
+         * print!("{}", get("foo.boo"))
+         *
+         * result : "hi"
          */
         let keys: Vec<&str> = query.split(".").map(|e| e.trim()).collect::<Vec<&str>>();
 
@@ -127,35 +150,6 @@ impl Configs {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-
-pub struct ServerConfigs {
-    pub ip: String,
-    pub port: i32,
-}
-
-impl ServerConfigs {
-    fn from(ip: &'static str, port: i32) -> Self {
-        Self {
-            ip: ip.to_owned(),
-            port,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AuthConfigs {
-    pub password: String,
-}
-
-impl AuthConfigs {
-    fn from(password: &'static str) -> Self {
-        Self {
-            password: password.to_owned(),
-        }
-    }
-}
-
 #[test]
 
 pub fn test_default_configs() {
@@ -164,6 +158,10 @@ pub fn test_default_configs() {
     assert_eq!(configs.get("auth.password").unwrap().as_str(), Some("1234"));
     assert_eq!(configs.get("server.ip").unwrap().as_str(), Some("0.0.0.0"));
     assert_eq!(configs.get("server.port").unwrap().as_integer(), Some(8080));
+    assert_eq!(
+        configs.get("vnstat.config_file").unwrap().as_str(),
+        Some("/etc/vnstat.conf")
+    );
     assert!(true)
 }
 #[test]
@@ -173,6 +171,10 @@ pub fn test_get_prop_from_configs() {
     assert_eq!(configs.get("auth.password").unwrap().as_str(), Some("1234"));
     assert_eq!(configs.get("server.ip").unwrap().as_str(), Some("0.0.0.0"));
     assert_eq!(configs.get("server.port").unwrap().as_integer(), Some(8080));
+    assert_eq!(
+        configs.get("vnstat.config_file").unwrap().as_str(),
+        Some("/etc/vnstat.conf")
+    );
     assert_eq!(configs.get("foo.boo"), None);
     assert!(true)
 }

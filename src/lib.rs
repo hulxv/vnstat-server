@@ -16,7 +16,7 @@ pub mod vnstat;
 
 #[actix_web::main]
 pub async fn run_server() -> anyhow::Result<()> {
-    let configs = app::configuration::Configs::init()?;
+    let configs = app::config::Configs::init()?;
     let (ip, port) = (configs.server.ip, configs.server.port as u16);
     println!("Server launched on {ip}:{port}");
     match HttpServer::new(|| {
