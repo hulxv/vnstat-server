@@ -3,22 +3,22 @@ use std::io::Error as StdError;
 use serde_json::json;
 
 use crate::{
-    http::response::*,
+    http::response::{Response, ResponseError, ResponseStatus},
     vnstat::db::{models::interface::Interface, Database},
 };
 use actix_web::{get, HttpResponse, Result};
 #[get("/interface")]
-pub async fn get_interfaces() -> Result<HttpResponse> {
+pub async fn get_interfaces() -> HttpResponse {
     match Database::default()
         .unwrap()
         .connect()
         .unwrap()
         .select_table::<Interface>("interface".to_owned())
     {
-        Ok(result) => {
-            Ok(HttpResponse::Ok().json(json!(Response::<Vec<Interface>>::new("success", result))))
-        }
-        Err(err) => Ok(HttpResponse::BadRequest()
-            .json(json!(ResponseError::new_response(err.to_string(), 502)))),
+        Ok(result) => HttpResponse::Ok().json(json!(Response::new()
+            .status(ResponseStatus::Success)
+            .data(&result)
+            .build())),
+        Err(err) => HttpResponse::InternalServerError().json(json!(ResponseError::new().build())),
     }
 }

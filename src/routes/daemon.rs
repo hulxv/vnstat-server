@@ -4,11 +4,11 @@ use serde_json::json;
 use crate::http::response::*;
 
 #[get("/daemon")]
-pub async fn get_daemon_status() -> Result<HttpResponse> {
+pub async fn get_daemon_status() -> HttpResponse {
     todo!()
 }
 
 #[post("/daemon")]
-pub async fn change_daemon_status(status: String) -> Result<HttpResponse> {
+pub async fn change_daemon_status(status: String) -> HttpResponse {
     todo!()
 }

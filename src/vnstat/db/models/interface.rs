@@ -1,7 +1,7 @@
 use diesel::sql_types::{Date, Integer, Nullable, Text};
 use serde::Serialize;
 
-#[derive(Debug, QueryableByName, Serialize)]
+#[derive(Debug, QueryableByName, Serialize, Clone)]
 pub struct Interface {
     #[sql_type = "Integer"]
     pub id: i32,
