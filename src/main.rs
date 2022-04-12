@@ -16,14 +16,14 @@ pub fn cli_runner() {
         match std::io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim().to_lowercase().as_str() {
                 "run" => {
-                    println!("Running server...");
                     thread::spawn(|| run_server().unwrap());
                 }
                 "exit" | "q" | "quit" => {
                     println!("Program has been terminated");
                     process::exit(1)
                 }
-                _ => (),
+                i if !i.is_empty() => eprintln!("error: command not found: {}", i),
+                _ => ()
             },
             Err(err) => eprintln!("{}", err),
         }
