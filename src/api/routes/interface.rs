@@ -4,7 +4,7 @@ use serde_json::json;
 
 use crate::{
     http::response::{Response, ResponseError, ResponseStatus},
-    vnstat::db::{models::interface::Interface, Database},
+    vnstat::db::{models::Interface, Database},
 };
 use actix_web::{get, HttpResponse, Result};
 #[get("/interface")]
@@ -13,7 +13,7 @@ pub async fn get_interfaces() -> HttpResponse {
         .unwrap()
         .connect()
         .unwrap()
-        .select_table::<Interface>("interface".to_owned())
+        .select_table::<Interface>("interface")
     {
         Ok(result) => HttpResponse::Ok().json(json!(Response::new()
             .status(ResponseStatus::Success)

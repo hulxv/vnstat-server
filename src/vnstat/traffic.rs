@@ -1,13 +1,13 @@
-use super::db::{models::traffic::Traffic, Database};
+use super::db::{models::Traffic, Database};
 use anyhow::{anyhow, Result};
 
 pub fn get_traffic(interval: String) -> Result<Vec<Traffic>> {
-    if !is_validated_interval(interval.to_string()) {
+    if !is_validated_interval(interval.clone()) {
         return Err(anyhow!("invalid interval"));
     }
     match Database::default()?
         .connect()?
-        .select_table::<Traffic>(interval)
+        .select_table::<Traffic>(interval.as_str())
     {
         Err(err) => Err(anyhow!(err)),
         Ok(result) => Ok(result),

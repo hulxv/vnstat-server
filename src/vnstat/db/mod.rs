@@ -17,7 +17,6 @@ use diesel::{
     query_builder::SqlQuery,
     RunQueryDsl,
 };
-use models::{info::Info, interface::Interface, traffic::Traffic};
 const DEFAULT_DATABASE_PATH: &str = "/var/lib/vnstat/vnstat.db";
 pub struct Database {
     pub path: String,
@@ -64,7 +63,7 @@ impl Database {
         }
     }
 
-    pub fn select_table<T>(&mut self, table: String) -> Result<Vec<T>>
+    pub fn select_table<T>(&mut self, table: &str) -> Result<Vec<T>>
     where
         T: diesel::deserialize::QueryableByName<diesel::sqlite::Sqlite>,
     {
@@ -140,9 +139,10 @@ fn database_connection_with_exists_path() -> Result<()> {
 
 #[test]
 fn select_data_from_table() -> Result<()> {
+    use models::*;
     for (i, value) in Database::default()?
         .connect()?
-        .select_table::<Interface>("interface".to_owned())?
+        .select_table::<Interface>("interface")?
         .iter()
         .enumerate()
     {

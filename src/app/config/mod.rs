@@ -162,7 +162,10 @@ pub fn test_default_configs() {
         configs.get("vnstat.config_file").unwrap().as_str(),
         Some("/etc/vnstat.conf")
     );
-    assert!(true)
+    println!(
+        "{}",
+        configs.get("server.address").unwrap().as_str().unwrap()
+    );
 }
 #[test]
 pub fn test_get_prop_from_configs() {

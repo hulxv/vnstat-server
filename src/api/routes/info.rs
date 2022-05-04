@@ -1,6 +1,6 @@
 use crate::{
     http::response::{Response, ResponseError, ResponseStatus},
-    vnstat::db::{models::info::Info, Database},
+    vnstat::db::{models::Info, Database},
 };
 use actix_web::{get, web, HttpResponse, Responder, Result};
 use serde_json::json;
@@ -11,7 +11,7 @@ pub async fn get_info() -> HttpResponse {
         .unwrap()
         .connect()
         .unwrap()
-        .select_table::<Info>("info".to_owned())
+        .select_table::<Info>("info")
     {
         Ok(result) => HttpResponse::Ok().json(json!(Response::new()
             .status(ResponseStatus::Success)

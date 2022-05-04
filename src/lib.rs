@@ -5,41 +5,44 @@
 #[macro_use]
 extern crate diesel;
 extern crate actix_web;
-use actix_web::{web, App, HttpServer};
-use std::io::{self, Write};
-
+use actix_web::{dev::Service, middleware::Logger, web, App, HttpServer};
+use anyhow::anyhow;
+use log::info;
+use std::io::{self, Result, Write};
 // modules
+pub mod api;
 pub mod app;
 pub mod http;
-pub mod routes;
 pub mod utils;
 pub mod vnstat;
 
-#[actix_web::main]
-pub async fn run_server() -> anyhow::Result<()> {
-    let configs = app::config::Configs::init()?;
-    let (ip, port) = (configs.server.ip, configs.server.port as u16);
+use api::routes;
 
-    io::stdout().flush().unwrap();
-    println!("Server launched on {ip}:{port}");
+#[actix_web::main]
+pub async fn run_server() -> Result<()> {
+    let configs = app::config::Configs::init().unwrap();
+    let addr = (configs.server.ip, configs.server.port as u16);
 
     match HttpServer::new(|| {
-        App::new().service(
-            web::scope("/api").service(
-                web::scope("/vnstat")
+        App::new()
+            .wrap(Logger::new(
+                "[%s] (%r %a) \n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
+            ))
+            .service(
+                web::scope("/api")
                     .service(routes::traffic::get_traffic)
                     .service(routes::interface::get_interfaces)
                     .service(routes::info::get_info)
                     .service(routes::config::get_config),
-            ),
-        )
+            )
     })
-    .bind((ip, port))?
-    .run()
-    .await
+    .bind(addr.clone())
     {
-        Err(err) => return Err(anyhow::anyhow!(err)),
-        _ => (),
-    };
-    Ok(())
+        Err(err) => Err(err),
+        Ok(server) => {
+            info!("Server running on http://{}:{} ", addr.0, addr.1);
+            server.run().await?;
+            Ok(())
+        }
+    }
 }
