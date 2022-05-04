@@ -1,12 +1,15 @@
+use crate::{
+    app::{
+        args::{Args, Commands, ServerCommands},
+        log::Logger,
+    },
+    server::Server,
+};
 use clap::Parser;
 use log::{error, info, warn};
 use std::{
     io::{self, Write},
     process, thread,
-};
-use vcs::app::{
-    args::{Args, Commands, ServerCommands},
-    log::Logger,
 };
 use vcs::*;
 
@@ -23,7 +26,7 @@ pub fn cli_runner() {
         match std::io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim().to_lowercase().as_str() {
                 "run" => {
-                    thread::spawn(|| run_server().unwrap());
+                    thread::spawn(|| Server::default().run().unwrap());
                 }
                 "exit" | "q" | "quit" => {
                     warn!("Program has been terminated");
@@ -47,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Server { command } => match command {
             ServerCommands::Run => {
                 warn!("Running server...",);
-                tokio::task::spawn_blocking(|| match run_server() {
+                tokio::task::spawn_blocking(|| match Server::default().run() {
                     Err(e) => error!("{e}"),
                     _ => (),
                 })
