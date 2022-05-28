@@ -1,4 +1,3 @@
-use crate::utils::file::File;
 use anyhow::{anyhow, Result};
 use dirs;
 use serde_derive::{Deserialize, Serialize};
@@ -10,6 +9,7 @@ use std::{
     },
 };
 use toml::{de, ser, value::Value};
+use utils::file::File;
 
 pub mod auth;
 pub mod server;
@@ -146,7 +146,7 @@ impl Configs {
                 )))
             }
         };
-        Ok([config_dir.unwrap(), "/vcs/vcs.config.toml".to_owned()].concat())
+        Ok([config_dir.unwrap(), "/vns/vns.config.toml".to_owned()].concat())
     }
 }
 

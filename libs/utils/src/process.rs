@@ -1,9 +1,6 @@
 use anyhow::{anyhow, Result};
-use nix::unistd::Uid;
 use regex::Regex;
 use std::{
-    cell::Cell,
-    io::{Error, ErrorKind::PermissionDenied},
     path::Path,
     process::{Child, Command as StdCommand, CommandArgs, Output, Stdio},
 };

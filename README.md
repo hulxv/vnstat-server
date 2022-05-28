@@ -1,1 +1,1 @@
-# vnStat Client Server
+# vnStat Server

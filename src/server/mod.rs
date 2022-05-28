@@ -10,7 +10,7 @@ use std::{
     ops::DerefMut,
 };
 
-use crate::app;
+use app;
 pub struct Server {
     ip: String,
     port: u16,
@@ -31,7 +31,7 @@ impl Server {
             .service(
                 web::scope("/api")
                     .service(routes::traffic::get_traffic)
-                    .service(routes::interface::get_interfaces)
+                    .service(routes::interface::get_interface)
                     .service(routes::info::get_info)
                     .service(routes::config::get_config),
             )

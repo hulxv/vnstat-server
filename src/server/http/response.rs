@@ -96,7 +96,7 @@ impl ResponseErrorBuilder {
             status: ResponseStatus::Failed,
             data: ResponseError {
                 code: self.code.unwrap_or(500),
-                details: self.details.unwrap_or( "There's an internal server error happend, Please check 'vcs' logs for more details"
+                details: self.details.unwrap_or( "There's an internal server error happend, Please check 'vns' logs for more details"
                    ),
             },
         }
@@ -104,7 +104,7 @@ impl ResponseErrorBuilder {
 }
 
 #[test]
-fn test_serialize_error_response() {
+async fn test_serialize_error_response() {
     use std::io::{Error as IOError, ErrorKind};
     let json = serde_json::to_string_pretty(
         &ResponseError::new()

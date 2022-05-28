@@ -1,45 +1,42 @@
-use crate::{
-    app::{
-        args::{Args, Commands, ServerCommands},
-        log::Logger,
-    },
-    server::Server,
+use app::{
+    args::{Args, Commands, ServerCommands},
+    log::Logger,
 };
 use clap::Parser;
-use log::{error, info, warn};
-use std::{
-    io::{self, Write},
-    process, thread,
-};
-use vcs::*;
+use log::{error, warn};
+use vns::server::Server;
+// use std::{
+//     io::{self, Write},
+//     process, thread,
+// };
 
-pub fn cli_runner() {
-    info!(
-        "VCS is running, Use it by enter commands or type \".help\" to show available commands or type \"q\" to quit."
-    );
-    loop {
-        print!("vcs ~> ",);
+// pub fn cli_runner() {
+//     info!(
+//         "VCS is running, Use it by enter commands or type \".help\" to show available commands or type \"q\" to quit."
+//     );
+//     loop {
+//         print!("vns ~> ",);
 
-        io::stdout().flush().expect("couldn't flushing");
-        let mut input = String::new();
+//         io::stdout().flush().expect("couldn't flushing");
+//         let mut input = String::new();
 
-        match std::io::stdin().read_line(&mut input) {
-            Ok(_) => match input.trim().to_lowercase().as_str() {
-                "run" => {
-                    thread::spawn(|| Server::default().run().unwrap());
-                }
-                "exit" | "q" | "quit" => {
-                    warn!("Program has been terminated");
-                    process::exit(1)
-                }
-                i if !i.is_empty() => error!("command not found: {}", i),
+//         match std::io::stdin().read_line(&mut input) {
+//             Ok(_) => match input.trim().to_lowercase().as_str() {
+//                 "run" => {
+//                     thread::spawn(|| Server::default().run().unwrap());
+//                 }
+//                 "exit" | "q" | "quit" => {
+//                     warn!("Program has been terminated");
+//                     process::exit(1)
+//                 }
+//                 i if !i.is_empty() => error!("command not found: {}", i),
 
-                _ => (),
-            },
-            Err(err) => error!("\nError: {}", err),
-        }
-    }
-}
+//                 _ => (),
+//             },
+//             Err(err) => error!("\nError: {}", err),
+//         }
+//     }
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -56,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .await?;
             }
-            // ServerCommands::Shutdown => Ok(()),
+            ServerCommands::Shutdown => (),
             _ => (),
         },
         _ => {

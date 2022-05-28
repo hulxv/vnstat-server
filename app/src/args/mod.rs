@@ -9,7 +9,7 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// To control your vcs server
+    /// To control your vns server
     #[clap(setting(AppSettings::ArgRequiredElseHelp))]
     Server {
         #[clap(required = true, arg_enum)]

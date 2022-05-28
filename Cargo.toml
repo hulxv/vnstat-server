@@ -1,23 +1,23 @@
 [package]
-name = "vcs"
+name = "vns"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace] 
+members = ["libs/libvnstat","libs/utils","app"]
 
 [dependencies]
 serde = { version = "1.0.13", features = ["derive"] }
 serde_json = "1.0.59"
 erased-serde = "0.3.20"
-diesel = { version = "1.4.8", default-features = false, features = ["sqlite"] }
-dirs = "4.0.0"
 tokio = { version = "1.17.0", features = ["full"] }
 actix-web = "4.0.1"
-toml = "0.5.8"
 serde_derive = "1.0.136"
 anyhow = "1.0.55"
-nix = "0.23.1"
-regex = "1.5.5"
 clap = { version = "3.1.8", features = ["derive"] }
 env_logger = "0.9.0"
 log = "0.4.17"
+utils = {path= "libs/utils"}
+libvnstat = {path="libs/libvnstat"}
+app = {path="app"}
