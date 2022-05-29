@@ -1,6 +1,5 @@
-use clap::{AppSettings, ArgEnum, Parser, Subcommand}; // use clap::{ArgEnum, Parser};
+use clap::{ArgEnum, Parser, Subcommand};
 #[derive(Parser, Debug)]
-// #[derive(clap::Subcommand, Parser, Debug)]
 #[clap(author, version, about)]
 pub struct Args {
     #[clap(subcommand)]
@@ -10,7 +9,6 @@ pub struct Args {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// To control your vns server
-    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
     Server {
         #[clap(required = true, arg_enum)]
         command: ServerCommands,

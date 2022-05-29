@@ -1,7 +1,5 @@
-use app::{
-    cli::{Args, Commands, ServerCommands},
-    log::Logger,
-};
+use crate::cli::{Args, Commands, ServerCommands};
+use app::log::Logger;
 use clap::Parser;
 use log::warn;
 

@@ -1,7 +1,7 @@
-pub mod args;
+pub mod cli;
 pub mod config;
 pub mod log;
 
 pub use crate::log::*;
-pub use args::*;
+pub use cli::*;
 pub use config::*;
