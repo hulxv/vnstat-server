@@ -1,7 +1,7 @@
-use crate::cli::{Args, Commands, ServerCommands};
 use app::log::Logger;
 use clap::Parser;
 use log::warn;
+use vns::cli::{Args, Commands, ServerCommands};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
