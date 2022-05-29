@@ -26,7 +26,7 @@ impl Server {
         match HttpServer::new(|| {
         App::new()
             .wrap(Logger::new(
-                "[%s] (%r %a) \n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
+                "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
             ))
             .service(
                 web::scope("/api")
