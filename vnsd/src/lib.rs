@@ -8,6 +8,7 @@ extern crate actix_web;
 // modules
 pub mod cli;
 pub mod server;
+pub mod unix_socket;
 
 pub use cli::Args;
 pub use server::{api, http};
