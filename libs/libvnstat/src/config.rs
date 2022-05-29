@@ -27,8 +27,8 @@ impl VnStatConfig {
 
 #[test]
 fn read_vnstat_config_file() {
-    use serde_json::{json, to_string_pretty};
+    // use serde_json::{json, to_string_pretty};
     let props = VnStatConfig.get_props().unwrap();
-    println!("{:#?}", to_string_pretty(&json!(props)).unwrap());
+    println!("{:#?}", props);
     assert!(true)
 }
