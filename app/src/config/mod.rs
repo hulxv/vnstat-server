@@ -3,12 +3,9 @@ use dirs;
 use serde_derive::{Deserialize, Serialize};
 use std::{
     fs,
-    io::{
-        Error,
-        ErrorKind::{Interrupted, NotFound},
-    },
+    io::{Error, ErrorKind::NotFound},
 };
-use toml::{de, ser, value::Value};
+use toml::value::Value;
 use utils::file::File;
 
 pub mod auth;
@@ -96,20 +93,19 @@ impl Configs {
         }
     }
 
+    /// Convert 'query' to keys to get 'toml::value::Value'
+    ///
+    /// ### Example
+    /// #### Toml content:
+    /// ```
+    ///   [foo]
+    ///   boo = "hi"
+    /// ```
+    /// print!("{}", get("foo.boo"))
+    ///
+    /// result : "hi"
+    ///
     pub fn get(&self, query: &str) -> Option<Value> {
-        /*
-         * Convert 'query' to keys to get 'toml::value::Value'
-         *
-         * - Example
-         *  - Toml content:
-         *     '
-         *         [foo]
-         *         boo = "hi"
-         *     '
-         * print!("{}", get("foo.boo"))
-         *
-         * result : "hi"
-         */
         let keys: Vec<&str> = query.split(".").map(|e| e.trim()).collect::<Vec<&str>>();
 
         // * Convert Configs to string and parse it to 'toml::value::Value'
@@ -129,8 +125,7 @@ impl Configs {
             value = match value {
                 // * value will be 'Option::None' in first loop
                 None => configs_as_string.get(key),
-
-                Some(val) => next_val,
+                _ => next_val,
             };
         }
         Some(value?.to_owned())
