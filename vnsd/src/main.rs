@@ -1,9 +1,11 @@
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    thread::{self, spawn},
+};
 
 use app::Logger;
 use clap::Parser;
 use log::{error, info};
-use tokio::net::UnixListener;
 
 use vnsd::{
     server::Server,
@@ -14,35 +16,52 @@ use vnsd::{
     Args,
 };
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), std::io::Error> {
     Logger::init();
     let args = Args::parse();
     let listener = UnixServer::bind("/tmp/vns.socket")
         .map_err(|err| error!("{err}"))
         .unwrap();
 
-    loop {
-        let (message, ..) = UnixServer::handle(&listener).await.unwrap();
-        if let Ok(message) = Message::from_str(message.as_str()).map_err(|err| error!("{err}")) {
-            match message {
-                RunServer => {
-                    info!("running server...")
-                }
-                ShutdownServer => {
-                    info!("stop server...")
-                }
-                RestartServer => {
-                    info!("restart server...")
-                }
+    let _ = tokio::join!(
+        async {
+            tokio::signal::ctrl_c()
+                .await
+                .map_err(|e| error!("{e}"))
+                .is_ok()
+                .then(|| std::process::exit(0));
+        },
+        async {
+            loop {
+                match listener.handle().await {
+                    Ok((message, ..)) => {
+                        if let Ok(message) =
+                            Message::from_str(message.as_str()).map_err(|err| error!("{err}"))
+                        {
+                            match message {
+                                RunServer => {
+                                    info!("Running server...",);
+                                    spawn(|| {
+                                        Server::default().run().unwrap();
+                                    });
+                                }
+                                ShutdownServer => {
+                                    info!("stop server...");
+                                }
+                                RestartServer => {
+                                    info!("restart server...");
+                                }
+                            }
+                        }
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                };
             }
-        };
-    }
-
-    // info!("Running server...",);
-    // tokio::task::spawn_blocking(|| match Server::default().run() {
-    //     Err(e) => error!("{e}"),
-    //     _ => (),
-    // })
-    // .await?;
+            Ok(())
+        }
+    );
     Ok(())
 }

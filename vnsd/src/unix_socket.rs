@@ -23,19 +23,23 @@ impl FromStr for Message {
         }
     }
 }
-pub struct UnixServer;
+
+// #[derive(Clone)]
+pub struct UnixServer {
+    listener: UnixListener,
+}
 
 impl UnixServer {
-    pub fn bind(path: &str) -> Result<UnixListener> {
+    pub fn bind(path: &str) -> Result<Self> {
         if Path::new(path).exists() {
             remove_file(path).unwrap();
         }
-        Ok(UnixListener::bind(path).unwrap())
+        Ok(Self {
+            listener: UnixListener::bind(path).unwrap(),
+        })
     }
-    pub async fn handle(
-        listener: &UnixListener,
-    ) -> Result<(String, UnixStream, SocketAddr), std::io::Error> {
-        match listener.accept().await {
+    pub async fn handle(&self) -> Result<(String, UnixStream, SocketAddr), std::io::Error> {
+        match self.listener.accept().await {
             Ok((stream, _addr)) => {
                 // Wait for the socket to be readable
                 stream.readable().await.unwrap();
