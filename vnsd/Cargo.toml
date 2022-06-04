@@ -2,7 +2,7 @@
 name = "vnsd"
 version = "0.1.0"
 edition = "2021"
-author = "Mohamed Emad (hulxxv@gmail.com)"
+authors = ["Mohamed Emad (hulxxv@gmail.com)"]
 description = "vnStat Server daemon"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
