@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use regex::Regex;
 use std::{
     path::Path,
-    process::{Child, Command as StdCommand, CommandArgs, Output, Stdio},
+    process::{Child, Command as StdCommand, Stdio},
 };
 
 trait CommandProps {
@@ -20,14 +20,14 @@ trait CommandIO {
 }
 
 #[derive(Debug)]
-struct Command {
+pub struct Command {
     command: StdCommand,
     program: &'static str,
     args: Vec<&'static str>,
 }
 
 impl Command {
-    fn new<'a>(cmd: &'static str) -> Self {
+    pub fn new<'a>(cmd: &'static str) -> Self {
         let pattern = Regex::new(r#"[^\s"']+|"([^"]*)"|'([^']*)'"#).unwrap();
         let matches: Vec<&str> = pattern.find_iter(cmd).map(|m| m.as_str()).collect();
         let mut command = StdCommand::new("sh");
@@ -40,10 +40,10 @@ impl Command {
         }
     }
 
-    fn needs_root() -> Result<bool> {
+    pub fn needs_root(&self) -> Result<bool> {
         todo!()
     }
-    fn exec(&mut self) -> Result<Child> {
+    pub fn exec(&self) -> Result<Child> {
         match StdCommand::new(self.program)
             .args(&self.args)
             .stdout(Stdio::piped())

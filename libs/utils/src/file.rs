@@ -1,8 +1,4 @@
-use std::{
-    fs::File as fsFile,
-    io::{Error, Write},
-    path::Path,
-};
+use std::{fs::File as fsFile, io::Write, path::Path};
 
 use anyhow::{anyhow, Result};
 
