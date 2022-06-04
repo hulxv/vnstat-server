@@ -1,16 +1,21 @@
 pub mod api;
 pub mod http;
 
-use actix_web::{dev::Service, middleware::Logger, web, App, HttpServer};
-use anyhow::anyhow;
 use api::routes;
+
+use anyhow::anyhow;
+use app;
 use log::info;
+
 use std::{
+    future::Future,
     io::{self, Result, Write},
     ops::DerefMut,
 };
 
-use app;
+use actix_server::Server as ActixServer;
+use actix_web::{middleware::Logger, web, App, HttpServer};
+
 pub struct Server {
     ip: String,
     port: u16,
@@ -21,30 +26,33 @@ impl Server {
         ServerBuilder::new()
     }
 
-    #[actix_web::main]
-    pub async fn run(&self) -> Result<()> {
-        match HttpServer::new(|| {
-        App::new()
-            .wrap(Logger::new(
-                "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
-            ))
-            .service(
-                web::scope("/api")
-                    .service(routes::traffic::get_traffic)
-                    .service(routes::interface::get_interface)
-                    .service(routes::info::get_info)
-                    .service(routes::config::get_config),
-            )
-    })
-    .bind((self.ip.as_str().clone().to_owned(),self.port.clone()))
-    {
-        Err(err) => Err(err),
-        Ok(server) => {
-            info!("Server running on http://{}:{} ", self.ip, self.port);
-            server.run().await?;
-            Ok(())
-        }
+    pub fn address(&self) -> (String, u16) {
+        (self.ip.clone(), self.port)
     }
+
+    // #[actix_web::main]
+    pub fn run(&self) -> Result<ActixServer> {
+        match HttpServer::new(|| {
+            App::new()
+                .wrap(Logger::new(
+                    "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
+                ))
+                .service(
+                    web::scope("/api")
+                        .service(routes::traffic::get_traffic)
+                        .service(routes::interface::get_interface)
+                        .service(routes::info::get_info)
+                        .service(routes::config::get_config),
+                )
+        })
+        .bind((self.ip.as_str().clone().to_owned(),self.port.clone()))
+            {
+                Err(err) => Err(err),
+                Ok(server) => {
+                    // info!("Server binding on http://{}:{} ", self.ip, self.port);
+                    Ok(server.run())
+                }
+            }
     }
 }
 
