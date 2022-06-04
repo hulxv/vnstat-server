@@ -128,7 +128,8 @@ mod tests {
     }
 
     #[test]
-    fn VnStatDatabase_connection_with_default_path() {
+    fn database_connection_with_default_path() {
+
         assert!(VnStatDatabase::default().is_ok())
     }
 
@@ -147,7 +148,7 @@ mod tests {
     #[test]
     fn select_data_from_table() -> Result<()> {
         use models::*;
-        for (i, value) in VnStatDatabase::default()?
+        for (_, value) in VnStatDatabase::default()?
             .connect()?
             .select_table::<Interface>("interface")?
             .iter()
