@@ -11,6 +11,11 @@ use std::{
     future::Future,
     io::{self, Result, Write},
     ops::DerefMut,
+    string::ToString,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use actix_server::Server as ActixServer;
@@ -99,5 +104,67 @@ impl ServerBuilder {
             ip: self.ip.as_ref().unwrap().to_string(),
             port: self.port.unwrap(),
         }
+    }
+}
+
+pub enum ServerStatusState {
+    Active,
+    Idle,
+    InActive,
+}
+
+impl From<usize> for ServerStatusState {
+    fn from(val: usize) -> Self {
+        use self::ServerStatusState::*;
+        match val {
+            0 => Active,
+            1 => Idle,
+            2 => InActive,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ToString for ServerStatusState {
+    fn to_string(&self) -> String {
+        use self::ServerStatusState::*;
+        match self {
+            Active => "active",
+            Idle => "idle",
+            InActive => "inactive",
+        }
+        .to_string()
+    }
+}
+
+#[derive(Clone)]
+pub struct ServerStatus {
+    flag: Arc<AtomicUsize>,
+}
+
+impl ServerStatus {
+    // use self::ServerStatusState::*;
+    pub fn new(state: ServerStatusState) -> Self {
+        Self {
+            flag: Arc::new(AtomicUsize::new(state as usize)),
+        }
+    }
+
+    pub fn inactive(&self) {
+        self.set_state(ServerStatusState::InActive)
+    }
+    pub fn idle(&self) {
+        self.set_state(ServerStatusState::Idle)
+    }
+    pub fn active(&self) {
+        self.set_state(ServerStatusState::Active)
+    }
+
+    #[inline]
+    pub fn get_state(&self) -> ServerStatusState {
+        self.flag.load(Ordering::SeqCst).into()
+    }
+    fn set_state(&self, state: ServerStatusState) {
+        self.flag.store(state as usize, Ordering::SeqCst)
     }
 }

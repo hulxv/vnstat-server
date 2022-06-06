@@ -125,4 +125,13 @@ impl ServerMessage {
             HashMap::from([("status", "failed"), ("details", details)])
         )
     }
+
+    pub fn without_status(data: Vec<(&str, &str)>) -> String {
+        let mut hash = HashMap::new();
+        data.iter().for_each(|(k, v)| {
+            hash.insert(k, v);
+        });
+
+        format!("{:?}", hash)
+    }
 }

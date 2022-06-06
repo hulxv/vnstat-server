@@ -1,7 +1,10 @@
-use app::log::Logger;
+use std::{collections::HashMap, str::FromStr};
+
 use clap::Parser;
+use colored::Colorize;
 use log::{error, warn};
-use std::{str::FromStr, string::ToString};
+
+use app::log::Logger;
 use utils::unix_socket::{Message, UnixSocket};
 use vns::cli::{Args, Commands, ServerCommands};
 
@@ -10,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     Logger::init();
 
-    let mut socket = UnixSocket::connect("/tmp/vns.socket")
+    let socket = UnixSocket::connect("/tmp/vns.socket")
         .await
         .map_err(|e| error!("{e}"))
         .expect("");
@@ -42,10 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     ServerCommands::Status => loop {
                         match socket.receive().await {
-                            Ok(message) => {
-                                println!("{message:#?}",);
-                                break;
-                            }
                             Err(ref e)
                                 if e.root_cause()
                                     .downcast_ref::<std::io::Error>()
@@ -56,7 +55,71 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 continue;
                             }
                             Err(e) => error!("{e}"),
+                            Ok(message) => {
+                                let hash: HashMap<String, String> =
+                                    serde_json::from_str(message.as_str()).unwrap();
+
+                                let (ip, port) =
+                                    (hash.get("ip").unwrap(), hash.get("port").unwrap());
+
+                                match hash.get("status").unwrap().to_lowercase().as_str() {
+                                    "active" => {
+                                        println!(
+                                            "{} ({}) {}:",
+                                            "Active".green().bold(),
+                                            "Running".yellow().bold(),
+                                            "on".bold(),
+                                        );
+                                        println!(
+                                            "{: >1}  {}",
+                                            "",
+                                            format!("{:<5} {}", "IP", ip.yellow(),).bold()
+                                        );
+                                        println!(
+                                            "{: >1}  {}",
+                                            "",
+                                            format!("{:<5} {}", "PORT", port.yellow()).bold()
+                                        );
+                                    }
+                                    "idle" => {
+                                        println!(
+                                            "{} ({})",
+                                            "Idle".cyan().bold(),
+                                            "Paused".blue().bold(),
+                                        );
+
+                                        println!(
+                                            "\n{} ",
+                                            format!(
+                                                "{}\n {} \n{}:  \n $ {}",
+                                                "Note".bright_blue(),
+                                                "To resume incoming connections",
+                                                "run".yellow(),
+                                                "vns server resume",
+                                            )
+                                            .bold()
+                                        )
+                                    }
+                                    "inactive" => {
+                                        println!(
+                                            "{} ({})",
+                                            "Inactive".yellow().bold(),
+                                            "STOPPED".red().bold(),
+                                        );
+                                        println!(
+                                            "\n{}\n {}",
+                                            "Note".bright_blue().bold(),
+                                            format!(
+                                                "Restart {} to re-running the server.",
+                                                "vns daemon".yellow(),
+                                            )
+                                        )
+                                    }
+                                    _ => (),
+                                };
+                            }
                         }
+                        break;
                     },
                     _ => (),
                 },
@@ -70,19 +133,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-// async fn send_message(stream: &UnixStream, message: &str) -> Result<(), std::io::Error> {
-//     loop {
-//         stream.writable().await?;
-//         match stream.try_write(message.as_bytes()) {
-//             Ok(n) => {
-//                 break;
-//             }
-//             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-//                 continue;
-//             }
-//             Err(e) => return Err(e),
-//         };
-//     }
-//     Ok(())
-// }
