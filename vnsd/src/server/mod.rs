@@ -11,32 +11,93 @@ use std::{
     future::Future,
     io::{self, Result, Write},
     ops::DerefMut,
+    pin::Pin,
     string::ToString,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     },
 };
 
-use actix_server::Server as ActixServer;
+use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
 use actix_web::{middleware::Logger, web, App, HttpServer};
 
+// #[derive(Send)]
+
+type ActixServerRunner = Arc<Mutex<Pin<Box<ActixServer>>>>;
+
 pub struct Server {
-    ip: String,
-    port: u16,
+    // ip: String,
+    // port: u16,
+    addr: ServerAddr,
+    runner: ActixServerRunner,
+    handler: Arc<ActixServerHandle>,
+    status: ServerStatus,
 }
 
 impl Server {
-    pub fn new() -> ServerBuilder {
-        ServerBuilder::new()
+    pub fn new() -> Result<Self> {
+        let addr = ServerAddr::from_config_file();
+        let runner = ServerRunner::new(addr.clone()).unwrap();
+        // let handler = runner.handl / e();
+        Ok(Self {
+            addr,
+            handler: Arc::new(runner.handle()),
+            runner: Arc::new(Mutex::new(Box::pin(runner))),
+            status: ServerStatus::new(ServerStatusState::InActive),
+        })
     }
 
     pub fn address(&self) -> (String, u16) {
-        (self.ip.clone(), self.port)
+        self.addr.get_tuple()
     }
 
-    // #[actix_web::main]
-    pub fn run(&self) -> Result<ActixServer> {
+    pub fn status(&self) -> ServerStatusState {
+        self.status.get_state()
+    }
+
+    pub async fn run(&self) -> Result<()> {
+        self.status.active();
+        // let handler = self.handler.lock().unwrap();
+        // let runner = Arc::clone(&self.runner);
+        let runner = Arc::clone(&self.runner);
+        let mut guard = runner.lock().unwrap();
+        // Pin.
+        match (&mut *guard).await {
+            Err(e) => {
+                self.status.inactive();
+                return Err(e);
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub async fn pause(&self) {
+        // let handler = self.handler.lock().unwrap();
+        self.status.idle();
+        self.handler.pause().await;
+        // Ok(())
+    }
+    pub async fn resume(&self) {
+        // let handler = self.handler.lock().unwrap();
+        self.status.active();
+        self.handler.resume().await;
+        // Ok(())
+    }
+    pub async fn stop(&self) {
+        // let handler = self.handler.lock().unwrap();
+        self.status.inactive();
+
+        self.handler.stop(true).await;
+        // Ok(())
+    }
+}
+
+pub struct ServerRunner;
+
+impl ServerRunner {
+    pub fn new(addr: ServerAddr) -> Result<ActixServer> {
         match HttpServer::new(|| {
             App::new()
                 .wrap(Logger::new(
@@ -50,60 +111,37 @@ impl Server {
                         .service(routes::config::get_config),
                 )
         })
-        .bind((self.ip.as_str().clone().to_owned(),self.port.clone()))
+        .bind(addr.get_tuple())
             {
                 Err(err) => Err(err),
                 Ok(server) => {
-                    // info!("Server binding on http://{}:{} ", self.ip, self.port);
                     Ok(server.run())
                 }
             }
     }
 }
-
-impl Default for Server {
-    fn default() -> Self {
-        let server_builder = ServerBuilder::new();
-        server_builder.from_config_file().build()
-    }
+#[derive(Clone)]
+pub struct ServerAddr {
+    ip: String,
+    port: u16,
 }
 
-pub struct ServerBuilder {
-    ip: Option<String>,
-    port: Option<u16>,
-}
-
-impl ServerBuilder {
-    pub fn new() -> Self {
+impl ServerAddr {
+    pub fn new(ip: &str, port: u16) -> Self {
         Self {
-            ip: None,
-            port: None,
+            ip: ip.to_owned(),
+            port,
         }
     }
 
-    pub fn ip(&mut self, ip: &str) -> &mut Self {
-        self.ip = Some(ip.to_owned());
-        self
-    }
-    pub fn port(&mut self, port: u16) -> &mut Self {
-        self.port = Some(port);
-        self
-    }
-
-    pub fn from_config_file(&self) -> Self {
+    pub fn from_config_file() -> Self {
         let configs = app::config::Configs::init().unwrap();
         let (ip, port) = (configs.server.ip, configs.server.port as u16);
-        Self {
-            ip: Some(ip),
-            port: Some(port),
-        }
+        Self { ip, port }
     }
 
-    pub fn build(&self) -> Server {
-        Server {
-            ip: self.ip.as_ref().unwrap().to_string(),
-            port: self.port.unwrap(),
-        }
+    pub fn get_tuple(&self) -> (String, u16) {
+        (self.ip.clone(), self.port)
     }
 }
 
