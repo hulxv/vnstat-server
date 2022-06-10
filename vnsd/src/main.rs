@@ -6,12 +6,15 @@ use std::{
 use app::Logger;
 use log::{error, info, warn};
 
-use tokio::{self, spawn};
+use tokio::{self, spawn, task::spawn_blocking};
 use utils::unix_socket::{
-    Message::{self, PauseServer, ResumeServer, ShutdownServer, StatusServer},
+    Message::{self, *},
     ServerMessage, UnixSocket,
 };
-use vnsd::{server::Server, Args};
+use vnsd::{
+    server::{Server, ServerHandlingError},
+    Args,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -19,7 +22,12 @@ async fn main() -> Result<(), std::io::Error> {
 
     // let args = Args::parse();
     let mut listener = UnixSocket::bind("/tmp/vns.socket")
-        .map_err(|e| error!("Cannot bind unix socket server: {e}"))
+        .map_err(|e| {
+            error!(
+                "Cannot bind unix socket server: {}",
+                e.root_cause().downcast_ref::<std::io::Error>().unwrap() // .message
+            )
+        })
         .unwrap();
 
     let server = Server::new()
@@ -58,14 +66,75 @@ async fn main() -> Result<(), std::io::Error> {
                                 PauseServer => {
                                     warn!("Pause server...",);
 
-                                    server.pause().await;
-                                    warn!("Server accecping incoming connections has been pause");
+                                    if let Err(err) = server.resume().await {
+                                        error!("Cannot pause connections: {}", err.clone());
+                                        loop {
+                                            match listener
+                                                .send(
+                                                    ServerMessage::failed(
+                                                        format!("{}", err.clone()).as_str(),
+                                                    )
+                                                    .as_str(),
+                                                )
+                                                .await
+                                            {
+                                                Err(ref e)
+                                                    if e.root_cause()
+                                                        .downcast_ref::<std::io::Error>()
+                                                        .unwrap()
+                                                        .kind()
+                                                        == std::io::ErrorKind::WouldBlock =>
+                                                {
+                                                    continue;
+                                                }
+                                                Err(e) => {
+                                                    error!("Cannot send message to client: {e}");
+                                                }
+                                                _ => (),
+                                            };
+                                            break;
+                                        }
+                                    } else {
+                                        warn!(
+                                            "Server accecping incoming connections has been pause"
+                                        )
+                                    }
                                 }
                                 ResumeServer => {
                                     info!("Resume server...",);
-
-                                    server.resume().await;
-                                    info!("Server accecping incoming connections has been resume")
+                                    if let Err(err) = server.resume().await {
+                                        error!("Cannot resume connections: {}", err.clone());
+                                        loop {
+                                            match listener
+                                                .send(
+                                                    ServerMessage::failed(
+                                                        format!("{}", err.clone()).as_str(),
+                                                    )
+                                                    .as_str(),
+                                                )
+                                                .await
+                                            {
+                                                Err(ref e)
+                                                    if e.root_cause()
+                                                        .downcast_ref::<std::io::Error>()
+                                                        .unwrap()
+                                                        .kind()
+                                                        == std::io::ErrorKind::WouldBlock =>
+                                                {
+                                                    continue;
+                                                }
+                                                Err(e) => {
+                                                    error!("Cannot send message to client: {e}");
+                                                }
+                                                _ => (),
+                                            };
+                                            break;
+                                        }
+                                    } else {
+                                        info!(
+                                            "Server accecping incoming connections has been resume"
+                                        )
+                                    }
                                 }
                                 StatusServer => {
                                     let (ip, port) = server.address();
@@ -76,7 +145,11 @@ async fn main() -> Result<(), std::io::Error> {
                                                 ServerMessage::without_status(vec![
                                                     (
                                                         "status",
-                                                        server.status().to_string().as_str(),
+                                                        server
+                                                            .status()
+                                                            .get_state()
+                                                            .to_string()
+                                                            .as_str(),
                                                     ),
                                                     ("ip", ip.as_str()),
                                                     ("port", port.to_string().as_str()),
@@ -94,7 +167,10 @@ async fn main() -> Result<(), std::io::Error> {
                                             {
                                                 continue;
                                             }
-                                            Err(e) => error!("Cannot send server status: {e}"),
+                                            Err(e) => {
+                                                error!("Cannot send server status: {e}");
+                                                break;
+                                            }
                                             _ => (),
                                         }
                                         break;
@@ -103,8 +179,38 @@ async fn main() -> Result<(), std::io::Error> {
                                 ShutdownServer => {
                                     warn!("Shutdown server...");
 
-                                    server.stop().await;
-                                    warn!("Server has been shutdown, you need to restart daemon to running it again.")
+                                    if let Err(err) = server.stop().await {
+                                        error!("Cannot stop server: {}", err.clone());
+                                        loop {
+                                            match listener
+                                                .send(
+                                                    ServerMessage::failed(
+                                                        format!("{}", err.clone()).as_str(),
+                                                    )
+                                                    .as_str(),
+                                                )
+                                                .await
+                                            {
+                                                Err(ref e)
+                                                    if e.root_cause()
+                                                        .downcast_ref::<std::io::Error>()
+                                                        .unwrap()
+                                                        .kind()
+                                                        == std::io::ErrorKind::WouldBlock =>
+                                                {
+                                                    continue;
+                                                }
+                                                Err(e) => {
+                                                    error!("Cannot send message to client: {e}");
+                                                    break;
+                                                }
+                                                _ => (),
+                                            };
+                                            break;
+                                        }
+                                    } else {
+                                        warn!("Server has been shutdown, you need to restart daemon to running it again.")
+                                    }
                                 }
                                 _ => (),
                             }

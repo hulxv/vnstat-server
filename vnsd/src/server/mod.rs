@@ -8,8 +8,9 @@ use app;
 use log::info;
 
 use std::{
+    error::Error as ErrorTrait,
     future::Future,
-    io::{self, Result, Write},
+    io::{self, Error as IOError, Result as IOResult, Write},
     ops::DerefMut,
     pin::Pin,
     string::ToString,
@@ -22,13 +23,65 @@ use std::{
 use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
 use actix_web::{middleware::Logger, web, App, HttpServer};
 
-// #[derive(Send)]
+#[derive(Clone)]
+pub struct ServerHandlingError {
+    cause: String,
+    kind: ServerHandlingErrorKind,
+}
+
+impl ServerHandlingError {
+    pub fn new(kind: ServerHandlingErrorKind, cause: &str) -> Self {
+        Self {
+            kind,
+            cause: cause.to_owned(),
+        }
+    }
+
+    pub fn cause(&self) -> String {
+        self.cause.clone()
+    }
+    pub fn kind(&self) -> ServerHandlingErrorKind {
+        self.kind
+    }
+}
+
+impl std::fmt::Display for ServerHandlingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.cause)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ServerHandlingErrorKind {
+    ServerAlreadyPause,
+    ServerAlreadyRunning,
+    ServerAlreadyStopped,
+    ServerStopped,
+}
+
+impl std::fmt::Display for ServerHandlingErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use self::ServerHandlingErrorKind::*;
+        match *self {
+            ServerAlreadyPause => write!(f, "server already paused"),
+            ServerAlreadyRunning => write!(f, "server already running"),
+            ServerAlreadyStopped => write!(f, "server already stopped"),
+            ServerStopped => write!(f, "server was stopped"),
+        }
+    }
+}
+
+impl ErrorTrait for ServerHandlingErrorKind {
+    fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
+        match *self {
+            _ => None,
+        }
+    }
+}
 
 type ActixServerRunner = Arc<Mutex<Pin<Box<ActixServer>>>>;
 
 pub struct Server {
-    // ip: String,
-    // port: u16,
     addr: ServerAddr,
     runner: ActixServerRunner,
     handler: Arc<ActixServerHandle>,
@@ -36,7 +89,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> IOResult<Self> {
         let addr = ServerAddr::from_config_file();
         let runner = ServerRunner::new(addr.clone()).unwrap();
         // let handler = runner.handl / e();
@@ -52,11 +105,11 @@ impl Server {
         self.addr.get_tuple()
     }
 
-    pub fn status(&self) -> ServerStatusState {
-        self.status.get_state()
+    pub fn status(&self) -> &ServerStatus {
+        &self.status
     }
 
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self) -> IOResult<()> {
         self.status.active();
         // let handler = self.handler.lock().unwrap();
         // let runner = Arc::clone(&self.runner);
@@ -73,31 +126,59 @@ impl Server {
         Ok(())
     }
 
-    pub async fn pause(&self) {
+    pub async fn pause(&self) -> Result<(), ServerHandlingError> {
         // let handler = self.handler.lock().unwrap();
+        if self.status.is_idle() {
+            return Err(ServerHandlingError::new(
+                ServerHandlingErrorKind::ServerAlreadyPause,
+                "server already paused",
+            ));
+        }
+        if self.status.is_inactive() {
+            return Err(ServerHandlingError::new(
+                ServerHandlingErrorKind::ServerStopped,
+                "server was stopped",
+            ));
+        }
         self.status.idle();
         self.handler.pause().await;
-        // Ok(())
+        Ok(())
     }
-    pub async fn resume(&self) {
-        // let handler = self.handler.lock().unwrap();
+    pub async fn resume(&self) -> Result<(), ServerHandlingError> {
+        if self.status.is_active() {
+            return Err(ServerHandlingError::new(
+                ServerHandlingErrorKind::ServerAlreadyRunning,
+                "server already running",
+            ));
+        }
+        if self.status.is_inactive() {
+            return Err(ServerHandlingError::new(
+                ServerHandlingErrorKind::ServerStopped,
+                "server was stopped",
+            ));
+        }
         self.status.active();
         self.handler.resume().await;
-        // Ok(())
+        Ok(())
     }
-    pub async fn stop(&self) {
-        // let handler = self.handler.lock().unwrap();
+    pub async fn stop(&self) -> Result<(), ServerHandlingError> {
+        if self.status.is_inactive() {
+            return Err(ServerHandlingError::new(
+                ServerHandlingErrorKind::ServerAlreadyStopped,
+                "server already stopped",
+            ));
+        }
         self.status.inactive();
 
         self.handler.stop(true).await;
-        // Ok(())
+        Ok(())
     }
 }
 
 pub struct ServerRunner;
 
 impl ServerRunner {
-    pub fn new(addr: ServerAddr) -> Result<ActixServer> {
+    pub fn new(addr: ServerAddr) -> IOResult<ActixServer> {
         match HttpServer::new(|| {
             App::new()
                 .wrap(Logger::new(
@@ -145,6 +226,7 @@ impl ServerAddr {
     }
 }
 
+#[derive(PartialEq)]
 pub enum ServerStatusState {
     Active,
     Idle,
@@ -204,5 +286,15 @@ impl ServerStatus {
     }
     fn set_state(&self, state: ServerStatusState) {
         self.flag.store(state as usize, Ordering::SeqCst)
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.get_state().eq(&ServerStatusState::Active)
+    }
+    pub fn is_inactive(&self) -> bool {
+        self.get_state().eq(&ServerStatusState::InActive)
+    }
+    pub fn is_idle(&self) -> bool {
+        self.get_state().eq(&ServerStatusState::Idle)
     }
 }
