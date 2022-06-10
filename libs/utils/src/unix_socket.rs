@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use log::warn;
 use std::{
     collections::HashMap,
     // convert::TryInto,
@@ -56,12 +57,16 @@ impl UnixSocket {
     /// bind unix socket
     pub fn bind(path: &str) -> Result<Self> {
         if Path::new(path).exists() {
+            warn!("Unix listener address is exist, it will be removed and previous connection will broken.");
             remove_file(path).unwrap();
         }
-        Ok(Self {
-            listener: Some(UnixListener::bind(path).unwrap()),
-            stream: None,
-        })
+        match UnixListener::bind(path) {
+            Err(e) => Err(anyhow!(e)),
+            Ok(listener) => Ok(Self {
+                listener: Some(listener),
+                stream: None,
+            }),
+        }
     }
 
     /// Connect to unix socket
