@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let socket = UnixSocket::connect("/tmp/vns.socket")
                 .await
                 .map_err(|e| error!("{e}"))
-                .expect("");
+                .unwrap();
 
             loop {
                 match socket
