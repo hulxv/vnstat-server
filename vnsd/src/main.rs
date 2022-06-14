@@ -51,7 +51,6 @@ async fn main() -> Result<(), std::io::Error> {
         },
         async {
             loop {
-                listener.handle().await.map_err(|e| error!("{e}")).unwrap();
                 match listener.receive().await {
                     Ok(message) => {
                         if let Ok(message) =
@@ -61,114 +60,82 @@ async fn main() -> Result<(), std::io::Error> {
                                 PauseServer => {
                                     warn!("Pause server...",);
 
-                                    if let Err(err) = server.resume().await {
+                                    if let Err(err) = server.pause().await {
                                         error!("Cannot pause connections: {}", err.clone());
-                                        loop {
-                                            match listener
-                                                .send(
-                                                    ServerMessage::failed(
-                                                        format!("{}", err.clone()).as_str(),
-                                                    )
-                                                    .as_str(),
+
+                                        if let Err(e) = listener
+                                            .send(
+                                                ServerMessage::failed(
+                                                    format!("{}", err.clone()).as_str(),
                                                 )
-                                                .await
-                                            {
-                                                Err(ref e)
-                                                    if e.root_cause()
-                                                        .downcast_ref::<std::io::Error>()
-                                                        .unwrap()
-                                                        .kind()
-                                                        == std::io::ErrorKind::WouldBlock =>
-                                                {
-                                                    continue;
-                                                }
-                                                Err(e) => {
-                                                    error!("Cannot send message to client: {e}");
-                                                }
-                                                _ => (),
-                                            };
-                                            break;
+                                                .as_str(),
+                                            )
+                                            .await
+                                        {
+                                            error!("Couldn't send to unix stream: {e}");
                                         }
                                     } else {
-                                        warn!(
-                                            "Server accecping incoming connections has been pause"
-                                        )
+                                        let message =
+                                            "Server accecping incoming connections has been pause.";
+                                        warn!("{message}");
+                                        if let Err(e) = listener
+                                            .send(ServerMessage::success(message).as_str())
+                                            .await
+                                        {
+                                            error!("Couldn't send to unix stream: {e}");
+                                        }
                                     }
                                 }
                                 ResumeServer => {
                                     info!("Resume server...",);
                                     if let Err(err) = server.resume().await {
                                         error!("Cannot resume connections: {}", err.clone());
-                                        loop {
-                                            match listener
-                                                .send(
-                                                    ServerMessage::failed(
-                                                        format!("{}", err.clone()).as_str(),
-                                                    )
-                                                    .as_str(),
+                                        if let Err(e) = listener
+                                            .send(
+                                                ServerMessage::failed(
+                                                    format!("{}", err.clone()).as_str(),
                                                 )
-                                                .await
-                                            {
-                                                Err(ref e)
-                                                    if e.root_cause()
-                                                        .downcast_ref::<std::io::Error>()
-                                                        .unwrap()
-                                                        .kind()
-                                                        == std::io::ErrorKind::WouldBlock =>
-                                                {
-                                                    continue;
-                                                }
-                                                Err(e) => {
-                                                    error!("Cannot send message to client: {e}");
-                                                }
-                                                _ => (),
-                                            };
-                                            break;
+                                                .as_str(),
+                                            )
+                                            .await
+                                        {
+                                            error!("Could send to unix stream: {e}");
                                         }
                                     } else {
-                                        info!(
-                                            "Server accecping incoming connections has been resume"
-                                        )
+                                        let message =
+                                            "Server accecping incoming connections has been resume.";
+                                        info!("{message}");
+
+                                        if let Err(e) = listener
+                                            .send(ServerMessage::success(message).as_str())
+                                            .await
+                                        {
+                                            error!("Couldn't send to unix stream: {e}");
+                                        }
                                     }
                                 }
                                 StatusServer => {
                                     let (ip, port) = server.address();
 
-                                    loop {
-                                        match listener
-                                            .send(
-                                                ServerMessage::new(vec![
-                                                    (
-                                                        "status",
-                                                        server
-                                                            .status()
-                                                            .get_state()
-                                                            .to_string()
-                                                            .as_str(),
-                                                    ),
-                                                    ("ip", ip.as_str()),
-                                                    ("port", port.to_string().as_str()),
-                                                ])
-                                                .as_str(),
-                                            )
-                                            .await
-                                        {
-                                            Err(ref e)
-                                                if e.root_cause()
-                                                    .downcast_ref::<std::io::Error>()
-                                                    .unwrap()
-                                                    .kind()
-                                                    == std::io::ErrorKind::WouldBlock =>
-                                            {
-                                                continue;
-                                            }
-                                            Err(e) => {
-                                                error!("Cannot send server status: {e}");
-                                                break;
-                                            }
-                                            _ => (),
-                                        }
-                                        break;
+                                    if let Err(e) = listener
+                                        .send(
+                                            ServerMessage::new(vec![
+                                                (
+                                                    "status",
+                                                    server
+                                                        .status()
+                                                        .get_state()
+                                                        .to_string()
+                                                        .as_str(),
+                                                ),
+                                                ("ip", ip.as_str()),
+                                                ("port", port.to_string().as_str()),
+                                            ])
+                                            .as_str(),
+                                        )
+                                        .await
+                                    {
+                                        error!("Could send to unix stream: {e}");
                                     }
                                 }
                                 ShutdownServer => {
@@ -176,51 +143,35 @@ async fn main() -> Result<(), std::io::Error> {
 
                                     if let Err(err) = server.stop().await {
                                         error!("Cannot stop server: {}", err.clone());
-                                        loop {
-                                            match listener
-                                                .send(
-                                                    ServerMessage::failed(
-                                                        format!("{}", err.clone()).as_str(),
-                                                    )
-                                                    .as_str(),
+                                        if let Err(e) = listener
+                                            .send(
+                                                ServerMessage::failed(
+                                                    format!("{}", err.clone()).as_str(),
                                                 )
-                                                .await
-                                            {
-                                                Err(ref e)
-                                                    if e.root_cause()
-                                                        .downcast_ref::<std::io::Error>()
-                                                        .unwrap()
-                                                        .kind()
-                                                        == std::io::ErrorKind::WouldBlock =>
-                                                {
-                                                    continue;
-                                                }
-                                                Err(e) => {
-                                                    error!("Cannot send message to client: {e}");
-                                                    break;
-                                                }
-                                                _ => (),
-                                            };
-                                            break;
+                                                .as_str(),
+                                            )
+                                            .await
+                                        {
+                                            error!("Could send to unix stream: {e}");
                                         }
                                     } else {
-                                        warn!("Server has been shutdown, you need to restart daemon to running it again.")
+                                        let message = "Server has been shutdown, you need to restart vnsd to running it again.";
+                                        warn!("{message}");
+                                        if let Err(e) = listener
+                                            .send(ServerMessage::success(message).as_str())
+                                            .await
+                                        {
+                                            error!("Couldn't send to unix stream: {e}");
+                                        }
                                     }
                                 }
                                 _ => (),
                             }
                         }
                     }
-                    Err(ref e)
-                        if e.root_cause()
-                            .downcast_ref::<std::io::Error>()
-                            .unwrap()
-                            .kind()
-                            == std::io::ErrorKind::WouldBlock =>
-                    {
-                        continue
+                    Err(e) => {
+                        error!("{e}");
                     }
-                    Err(e) => return Err(e),
                 };
             }
         }

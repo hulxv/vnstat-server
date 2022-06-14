@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use log::{info, warn};
+use log::warn;
 use std::{
     collections::HashMap,
     fs::remove_file,
@@ -47,10 +47,17 @@ impl ToString for Message {
     }
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum UnixSocketSide {
+    Client,
+    Server,
+}
+
 #[derive(Debug)]
 pub struct UnixSocket {
     listener: Option<UnixListener>,
     stream: Option<UnixStream>,
+    side: UnixSocketSide,
 }
 
 impl UnixSocket {
@@ -68,6 +75,7 @@ impl UnixSocket {
             Ok(listener) => Ok(Self {
                 listener: Some(listener),
                 stream: None,
+                side: UnixSocketSide::Server,
             }),
         }
     }
@@ -77,11 +85,12 @@ impl UnixSocket {
         Ok(Self {
             listener: None,
             stream: Some(UnixStream::connect(path).await?),
+            side: UnixSocketSide::Client,
         })
     }
 
     /// Handling socket connections before receive messages
-    pub async fn handle(&mut self) -> Result<&mut Self> {
+    pub async fn accept(&mut self) -> Result<&mut Self> {
         match self.listener.as_ref().unwrap().accept().await {
             Ok((stream, _)) => {
                 self.stream = Some(stream);
@@ -92,26 +101,48 @@ impl UnixSocket {
     }
 
     /// Recieve messages from stream
-    pub async fn receive(&self) -> Result<String> {
-        self.stream.as_ref().unwrap().readable().await.unwrap();
-        let mut buf = vec![0; 1024];
-
-        match self.stream.as_ref().unwrap().try_read(&mut buf) {
-            Ok(n) => {
-                buf.truncate(n);
-                Ok(from_utf8(&buf).unwrap().to_owned())
+    pub async fn receive(&mut self) -> Result<String> {
+        loop {
+            if self.side.eq(&UnixSocketSide::Server) {
+                if let Err(e) = self.accept().await {
+                    return Err(anyhow!(e));
+                }
             }
-            Err(err) => Err(anyhow!(err)),
+
+            self.stream.as_ref().unwrap().readable().await.unwrap();
+            let mut buf = vec![0; 1024];
+            match self.stream.as_ref().unwrap().try_read(&mut buf) {
+                Ok(n) => {
+                    buf.truncate(n);
+                    return Ok(from_utf8(&buf).unwrap().to_owned());
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    continue;
+                }
+                Err(e) => {
+                    return Err(anyhow!(e));
+                }
+            }
         }
     }
 
     /// Send messages to stream
     pub async fn send(&self, message: &str) -> Result<()> {
-        self.stream.as_ref().unwrap().writable().await?;
-
-        if let Err(err) = self.stream.as_ref().unwrap().try_write(message.as_bytes()) {
-            return Err(anyhow!(err));
-        };
+        loop {
+            self.stream.as_ref().unwrap().writable().await?;
+            if let Err(err) = self.stream.as_ref().unwrap().try_write(message.as_bytes()) {
+                match err {
+                    ref e if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        continue;
+                    }
+                    e => {
+                        return Err(anyhow!(e));
+                    }
+                }
+            } else {
+                break;
+            }
+        }
         Ok(())
     }
 }
@@ -119,13 +150,11 @@ impl UnixSocket {
 pub struct ServerMessage;
 
 impl ServerMessage {
-    pub fn success(data: Vec<(&str, &str)>) -> String {
-        let mut hash = HashMap::from([("status", "success")]);
-        data.iter().for_each(|(k, v)| {
-            hash.insert(k, v).unwrap();
-        });
-
-        format!("{:?}", hash)
+    pub fn success(details: &str) -> String {
+        format!(
+            "{:?}",
+            HashMap::from([("status", "success"), ("details", details)])
+        )
     }
     pub fn failed(details: &str) -> String {
         format!(

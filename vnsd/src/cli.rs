@@ -4,7 +4,7 @@ use clap::{AppSettings, ArgEnum, Parser, Subcommand}; // use clap::{ArgEnum, Par
 pub struct Args {
     /// select pid file
     #[clap(long, short)]
-    pub pidfile: Option<String>,
+    pub pid_file: Option<String>,
     /// set daemon process user
     #[clap(long, short)]
     pub user: Option<String>,
@@ -14,7 +14,4 @@ pub struct Args {
     /// run in foreground
     #[clap(long, short)]
     pub foreground: bool,
-    /// run server directly
-    #[clap(long, short)]
-    pub run: bool,
 }
