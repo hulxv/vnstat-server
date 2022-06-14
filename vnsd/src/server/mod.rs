@@ -2,10 +2,9 @@ pub mod api;
 pub mod http;
 
 use api::routes;
-
 use anyhow::anyhow;
-use app;
 use log::info;
+use app;
 
 use std::{
     error::Error as ErrorTrait,
@@ -21,7 +20,7 @@ use std::{
 };
 
 use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{middleware::Logger, web::{self,route}, App, HttpServer};
 
 #[derive(Clone)]
 pub struct ServerHandlingError {
@@ -114,11 +113,9 @@ impl Server {
 
     pub async fn run(&self) -> IOResult<()> {
         self.status.active();
-        // let handler = self.handler.lock().unwrap();
-        // let runner = Arc::clone(&self.runner);
         let runner = Arc::clone(&self.runner);
         let mut guard = runner.lock().unwrap();
-        // Pin.
+
         match (&mut *guard).await {
             Err(e) => {
                 self.status.inactive();
@@ -130,7 +127,6 @@ impl Server {
     }
 
     pub async fn pause(&self) -> Result<(), ServerHandlingError> {
-        // let handler = self.handler.lock().unwrap();
         if self.status.is_idle() {
             return Err(ServerHandlingError::new(
                 ServerHandlingErrorKind::ServerAlreadyPause,
@@ -193,7 +189,8 @@ impl ServerRunner {
                         .service(routes::interface::get_interface)
                         .service(routes::info::get_info)
                         .service(routes::config::get_config),
-                )
+                        
+                ).default_service(route().to(routes::not_found::not_found))
         })
         .bind(addr.get_tuple())
             {
