@@ -1,4 +1,5 @@
-use env_logger::{self, fmt::Color, Builder};
+use colored::Colorize;
+use env_logger::{self, fmt::Color, Builder, Target::Stdout};
 use log::Level;
 use std::io::Write;
 pub struct Logger;
@@ -23,15 +24,28 @@ impl Logger {
                 time_style.set_color(Color::Rgb(255, 165, 0)).set_bold(true);
 
                 args_style.set_color(Color::White).set_bold(true);
-
-                writeln!(
-                    buf,
-                    "[{}] -> {} : {}",
-                    time_style.value(buf.timestamp()),
-                    level_style.value(record.level()),
-                    args_style.value(record.args())
-                )
+                if record.level().eq(&Level::Error) {
+                    // Wrtie to stderr
+                    eprintln!(
+                        "[{}] -> {} : {}",
+                        buf.timestamp().to_string().bold().yellow(),
+                        record.level().to_string().bold().red(),
+                        record.args().to_string().bold()
+                    );
+                } else {
+                    // Write to stdout (default)
+                    writeln!(
+                        buf,
+                        "[{}] -> {} : {}",
+                        time_style.value(buf.timestamp()),
+                        level_style.value(record.level()),
+                        args_style.value(record.args())
+                    )
+                    .unwrap();
+                }
+                Ok(())
             })
+            .target(Stdout)
             .init();
     }
 }
