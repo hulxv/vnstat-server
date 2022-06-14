@@ -91,7 +91,10 @@ pub struct Server {
 impl Server {
     pub fn new() -> IOResult<Self> {
         let addr = ServerAddr::from_config_file();
-        let runner = ServerRunner::new(addr.clone()).unwrap();
+        let runner = match ServerRunner::new(addr.clone()) {
+            Err(e) => return Err(e),
+            Ok(s) => s,
+        };
         // let handler = runner.handl / e();
         Ok(Self {
             addr,

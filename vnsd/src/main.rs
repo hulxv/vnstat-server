@@ -1,35 +1,30 @@
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::str::FromStr;
 
 use app::Logger;
 use log::{error, info, warn};
 
-use tokio::{self, spawn, task::spawn_blocking};
+use tokio::{self, spawn};
 use utils::unix_socket::{
     Message::{self, *},
     ServerMessage, UnixSocket,
 };
-use vnsd::{
-    server::{Server, ServerHandlingError},
-    Args,
-};
+use vnsd::server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     Logger::init();
 
-    // let args = Args::parse();
-    let mut listener = UnixSocket::bind("/tmp/vns.socket")
-        .map_err(|e| {
-            error!(
-                "Cannot bind unix socket server: {}",
-                e.root_cause().downcast_ref::<std::io::Error>().unwrap() // .message
-            )
-        })
-        .unwrap();
-
+    let sock_path = "/tmp/vnsd.sock";
+    let mut listener = match UnixSocket::bind(sock_path) {
+        Err(e) => {
+            error!("Cannot bind unix server: {e}");
+            std::process::exit(1);
+        }
+        Ok(lis) => {
+            info!("uds listening on '{sock_path}'");
+            lis
+        }
+    };
     let server = Server::new()
         .map_err(|e| error!("Cannot bind http server: {e}"))
         .unwrap();
@@ -142,7 +137,7 @@ async fn main() -> Result<(), std::io::Error> {
                                     loop {
                                         match listener
                                             .send(
-                                                ServerMessage::without_status(vec![
+                                                ServerMessage::new(vec![
                                                     (
                                                         "status",
                                                         server
@@ -223,7 +218,7 @@ async fn main() -> Result<(), std::io::Error> {
                             .kind()
                             == std::io::ErrorKind::WouldBlock =>
                     {
-                        continue;
+                        continue
                     }
                     Err(e) => return Err(e),
                 };

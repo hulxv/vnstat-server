@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
-use log::warn;
+use log::{info, warn};
 use std::{
     collections::HashMap,
-    // convert::TryInto,
     fs::remove_file,
     path::Path,
     str::{from_utf8, FromStr},
@@ -48,6 +47,7 @@ impl ToString for Message {
     }
 }
 
+#[derive(Debug)]
 pub struct UnixSocket {
     listener: Option<UnixListener>,
     stream: Option<UnixStream>,
@@ -58,7 +58,10 @@ impl UnixSocket {
     pub fn bind(path: &str) -> Result<Self> {
         if Path::new(path).exists() {
             warn!("Unix listener address is exist, it will be removed and previous connection will broken.");
-            remove_file(path).unwrap();
+            match remove_file(path) {
+                Err(e) => return Err(anyhow!(e)),
+                Ok(_) => warn!("Unix listener address has been removed"),
+            };
         }
         match UnixListener::bind(path) {
             Err(e) => Err(anyhow!(e)),
@@ -131,7 +134,7 @@ impl ServerMessage {
         )
     }
 
-    pub fn without_status(data: Vec<(&str, &str)>) -> String {
+    pub fn new(data: Vec<(&str, &str)>) -> String {
         let mut hash = HashMap::new();
         data.iter().for_each(|(k, v)| {
             hash.insert(k, v);

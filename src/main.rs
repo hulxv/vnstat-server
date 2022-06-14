@@ -19,11 +19,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.commands {
         Some(Commands::Server { command }) => {
-            let socket = UnixSocket::connect("/tmp/vns.socket")
+            let socket = UnixSocket::connect("/tmp/vnsd.sock")
                 .await
                 .map_err(|e| error!("{e}"))
                 .unwrap();
-
             loop {
                 match socket
                     .send(
