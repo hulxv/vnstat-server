@@ -7,8 +7,6 @@ use std::io::Error as StdError;
 
 #[get("/traffic/{interval}")]
 pub async fn get_traffic(interval: web::Path<String>) -> HttpResponse {
-    // if !TrafficInterval {
-    // }
     match VnStat.traffic(interval.as_str()).get() {
         Ok(result) => HttpResponse::Ok().json(json!(Response::new()
             .status(ResponseStatus::Success)

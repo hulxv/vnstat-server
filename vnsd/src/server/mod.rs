@@ -1,7 +1,7 @@
 pub mod api;
 pub mod http;
 
-use api::routes;
+use api::services;
 use anyhow::anyhow;
 use log::info;
 use app;
@@ -185,12 +185,12 @@ impl ServerRunner {
                 ))
                 .service(
                     web::scope("/api")
-                        .service(routes::traffic::get_traffic)
-                        .service(routes::interface::get_interface)
-                        .service(routes::info::get_info)
-                        .service(routes::config::get_config),
+                        .service(services::traffic::get_traffic)
+                        .service(services::interface::get_interface)
+                        .service(services::info::get_info)
+                        .service(services::config::get_config),
                         
-                ).default_service(route().to(routes::not_found::not_found))
+                ).default_service(route().to(services::not_found::not_found))
         })
         .bind(addr.get_tuple())
             {
