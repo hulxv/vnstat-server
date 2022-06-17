@@ -22,3 +22,5 @@ utils = {path= "../libs/utils"}
 libvnstat = {path="../libs/libvnstat"}
 app = {path="../app"}
 daemonize = "0.4.1"
+diesel = { version = "1.4.8", features = ["sqlite"] }
+dirs = "4.0.0"

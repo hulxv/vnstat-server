@@ -1,9 +1,7 @@
-#![allow(unused_variables)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
 #[macro_use]
 extern crate actix_web;
+#[macro_use]
+extern crate diesel;
 
 // modules
 pub mod cli;
