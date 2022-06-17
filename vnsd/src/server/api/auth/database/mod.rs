@@ -111,26 +111,23 @@ mod tests {
         remove_file(path).unwrap()
     }
 
-    use diesel::{sql_types::Text, QueryableByName};
-    #[derive(Debug, QueryableByName, Clone, PartialEq)]
-    struct Table {
-        #[sql_type = "Text"]
-        pub name: String,
-    }
-
     #[test]
     fn initlize_database() {
-        let path = DatabaseFile::new().unwrap().path();
-        if Path::new(&path).exists() {
-            remove_file(&path).unwrap();
+        use diesel::{sql_types::Text, QueryableByName};
+        #[derive(Debug, QueryableByName, Clone, PartialEq)]
+        struct Table {
+            #[sql_type = "Text"]
+            pub name: String,
         }
+
         let db = Database::connect().unwrap();
         db.init().unwrap();
-        let tables: Vec<Table> = sql_query("SELECT name FROM sqlite_master WHERE type='table'")
-            .load(&db.conn)
+        let tables = sql_query("SELECT name FROM sqlite_master WHERE type='table'")
+            .load::<Table>(&db.conn)
             .unwrap();
-        println!("{tables:#?}");
         let excepted_tables = vec!["connections", "keys", "sessions"];
+
+        println!("{tables:#?}");
 
         for table in excepted_tables.into_iter() {
             assert!(tables.contains(&Table {
