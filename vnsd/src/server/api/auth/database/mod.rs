@@ -1,6 +1,8 @@
-mod scheme;
+mod model;
+mod query;
+mod schema;
 
-use scheme::*;
+use query::*;
 
 use anyhow::{anyhow, Result};
 use diesel::{
@@ -13,12 +15,12 @@ use std::{
     fs::{create_dir_all, File},
     path::Path,
 };
-
-pub struct Database {
+pub struct InitDatabase {
     pub conn: SqliteConnection,
 }
 
-impl Database {
+/// Initialization of the authentication database, i.e. its creation and creation of its tables
+impl InitDatabase {
     pub fn connect() -> Result<Self> {
         match SqliteConnection::establish(
             &DatabaseFile::new()
@@ -33,18 +35,16 @@ impl Database {
     }
 
     pub fn init(&self) -> Result<()> {
-        for q in [
-            CREATE_KEYS_QUERY,
-            CREATE_SESSIONS_QUERY,
-            CREATE_CONNECTIONS_QUERY,
-        ]
-        .iter()
-        {
+        for q in [CREATE_KEYS_QUERY, CREATE_CONNECTIONS_QUERY].iter() {
             if let Err(e) = sql_query(*q).execute(&self.conn) {
                 return Err(anyhow!(e));
             }
         }
         Ok(())
+    }
+
+    pub fn conn(&self) -> &SqliteConnection {
+        &self.conn
     }
 }
 
@@ -89,6 +89,7 @@ mod tests {
     use ::core::prelude::v1::test;
     use dirs::config_dir;
     use std::fs::remove_file;
+
     #[test]
     fn get_database_file_path() {
         let path = DatabaseFile::new().unwrap().path();
@@ -120,12 +121,13 @@ mod tests {
             pub name: String,
         }
 
-        let db = Database::connect().unwrap();
+        let db = InitDatabase::connect().unwrap();
+
         db.init().unwrap();
         let tables = sql_query("SELECT name FROM sqlite_master WHERE type='table'")
             .load::<Table>(&db.conn)
             .unwrap();
-        let excepted_tables = vec!["connections", "keys", "sessions"];
+        let excepted_tables = vec!["connections", "keys"];
 
         println!("{tables:#?}");
 
