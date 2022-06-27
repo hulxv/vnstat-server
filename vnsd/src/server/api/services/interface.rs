@@ -1,9 +1,8 @@
-use std::io::Error as StdError;
-
+use log::error;
 use serde_json::json;
 
 use crate::http::response::{Response, ResponseError, ResponseStatus};
-use actix_web::{get, HttpResponse, Result};
+use actix_web::{get, HttpResponse};
 use libvnstat::VnStat;
 #[get("/interface")]
 pub async fn get_interface() -> HttpResponse {
@@ -12,6 +11,9 @@ pub async fn get_interface() -> HttpResponse {
             .status(ResponseStatus::Success)
             .data(&result)
             .build())),
-        Err(err) => HttpResponse::InternalServerError().json(json!(ResponseError::new().build())),
+        Err(err) => {
+            error!("{err}");
+            HttpResponse::InternalServerError().json(json!(ResponseError::new().build()))
+        }
     }
 }
