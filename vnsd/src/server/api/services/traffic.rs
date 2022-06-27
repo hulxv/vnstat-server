@@ -1,9 +1,7 @@
 use crate::http::response::{Response, ResponseError, ResponseStatus};
-use actix_web::{get, web, HttpResponse, Result};
-use anyhow::anyhow;
-use libvnstat::{TrafficInterval, VnStat};
+use actix_web::{get, web, HttpResponse};
+use libvnstat::VnStat;
 use serde_json::json;
-use std::io::Error as StdError;
 
 #[get("/traffic/{interval}")]
 pub async fn get_traffic(interval: web::Path<String>) -> HttpResponse {

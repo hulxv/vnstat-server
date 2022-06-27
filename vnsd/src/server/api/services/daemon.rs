@@ -1,5 +1,4 @@
-use actix_web::{get, post, web, HttpResponse, Result};
-use serde_json::json;
+use actix_web::{get, post, HttpResponse};
 
 use crate::http::response::*;
 

@@ -105,7 +105,6 @@ impl ResponseErrorBuilder {
 
 #[test]
 async fn test_serialize_error_response() {
-    use std::io::{Error as IOError, ErrorKind};
     let json = serde_json::to_string_pretty(
         &ResponseError::new()
             .code(500)
