@@ -4,23 +4,18 @@ use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use uuid::Uuid;
 
 use chrono::{
-    prelude::{DateTime, Local, TimeZone},
+    prelude::{DateTime, Local},
     Duration, FixedOffset,
 };
 use rand::{distributions::Alphanumeric, Rng};
 
+// TODO: read from configuration file
 const EXPIRE_KEY_DURATION_DAYS: i64 = 2;
 
 /// Implement create, read, update and delete for table.
-pub trait CRUD {
+pub trait Create {
     /// Create or insert new values.
     fn create(&self, conn: &SqliteConnection) -> Result<()>;
-    /// Read previous values.
-    fn read(&self, conn: &SqliteConnection) -> Result<()>;
-    /// Update previous values.
-    fn update<T>(&self, conn: &SqliteConnection, id: T) -> Result<()>;
-    /// Delete previous values.
-    fn delete<T>(&self, conn: &SqliteConnection, id: T) -> Result<()>;
 }
 
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
@@ -30,18 +25,14 @@ pub struct Connections {
     pub ip_addr: String,
     pub user_agent: String,
     pub connected_at: String,
-    pub key_id: i32,
 }
 
 impl Connections {
-    pub fn new(conn: &SqliteConnection, ip_addr: &str, user_agent: &str) -> Self {
-        let key = Keys::generate(conn);
-        key.create(conn).unwrap();
+    pub fn new(ip_addr: &str, user_agent: &str) -> Self {
         Self {
             uuid: Uuid::new_v4().to_string(),
             ip_addr: ip_addr.to_owned(),
             user_agent: user_agent.to_owned(),
-            key_id: key.id(),
             connected_at: Local::now().to_rfc2822(),
         }
     }
@@ -60,21 +51,12 @@ impl Connections {
     }
 }
 
-impl CRUD for Connections {
+impl Create for Connections {
     fn create(&self, conn: &SqliteConnection) -> Result<()> {
         if let Err(e) = insert_into(connections::table).values(self).execute(conn) {
             return Err(anyhow!(e));
         }
         Ok(())
-    }
-    fn read(&self, conn: &SqliteConnection) -> Result<()> {
-        todo!()
-    }
-    fn update<T>(&self, conn: &SqliteConnection, id: T) -> Result<()> {
-        todo!()
-    }
-    fn delete<T>(&self, conn: &SqliteConnection, id: T) -> Result<()> {
-        todo!()
     }
 }
 
@@ -85,10 +67,11 @@ pub struct Keys {
     pub value: String,
     pub created_at: String,
     pub expires_at: String,
+    pub conn_uuid: String,
 }
 
 impl Keys {
-    pub fn generate(conn: &SqliteConnection) -> Self {
+    pub fn generate_new_key(conn: &SqliteConnection, conn_uuid: &str) -> Self {
         let last_id = match keys::table.load::<Self>(conn) {
             Err(_) => 0,
             Ok(keys) => match keys.last() {
@@ -96,9 +79,8 @@ impl Keys {
                 None => 0,
             },
         };
-        let mut value = String::with_capacity(32);
         'outer: loop {
-            value = rand::thread_rng()
+            let value = rand::thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(32)
                 .map(char::from)
@@ -109,20 +91,19 @@ impl Keys {
                 }
             }
 
-            break;
-        }
-
-        Self {
-            id: last_id + 1,
-            value,
-            created_at: Local::now().to_rfc2822(),
-            expires_at: match Local::now()
-                .checked_add_signed(Duration::days(EXPIRE_KEY_DURATION_DAYS))
-            {
-                Some(dt) => dt,
-                None => Local::now(),
-            }
-            .to_rfc2822(),
+            return Self {
+                id: last_id + 1,
+                value,
+                created_at: Local::now().to_rfc2822(),
+                expires_at: match Local::now()
+                    .checked_add_signed(Duration::days(EXPIRE_KEY_DURATION_DAYS))
+                {
+                    Some(dt) => dt,
+                    None => Local::now(),
+                }
+                .to_rfc2822(),
+                conn_uuid: conn_uuid.to_owned(),
+            };
         }
     }
 
@@ -138,6 +119,15 @@ impl Keys {
     pub fn created_at(&self) -> DateTime<FixedOffset> {
         DateTime::parse_from_rfc2822(&self.created_at.clone()).unwrap()
     }
+
+    pub fn conn(&self, conn: &SqliteConnection) -> Option<Connections> {
+        for connection in connections::table.load::<Connections>(conn).unwrap() {
+            if connection.uuid().eq(&self.conn_uuid) {
+                return Some(connection);
+            }
+        }
+        None
+    }
 }
 
 impl std::default::Default for Keys {
@@ -147,25 +137,17 @@ impl std::default::Default for Keys {
             value: "".to_owned(),
             created_at: Local::now().to_string(),
             expires_at: "".to_owned(),
+            conn_uuid: "".to_owned(),
         }
     }
 }
 
-impl CRUD for Keys {
+impl Create for Keys {
     fn create(&self, conn: &SqliteConnection) -> Result<()> {
         if let Err(e) = insert_into(keys::table).values(self).execute(conn) {
             return Err(anyhow!(e));
         }
         Ok(())
-    }
-    fn read(&self, conn: &SqliteConnection) -> Result<()> {
-        todo!()
-    }
-    fn update<T>(&self, conn: &SqliteConnection, id: T) -> Result<()> {
-        todo!()
-    }
-    fn delete<T>(&self, conn: &SqliteConnection, id: T) -> Result<()> {
-        todo!()
     }
 }
 
@@ -186,14 +168,16 @@ mod tests {
                 .checked_add_signed(Duration::days(EXPIRE_KEY_DURATION_DAYS))
                 .unwrap()
                 .to_rfc2822(),
-            Keys::generate(db.conn().clone()).expires_at().to_rfc2822()
+            Keys::generate_new_key(db.conn().clone(), "")
+                .expires_at()
+                .to_rfc2822()
         )
     }
 
     #[test]
     async fn when_key_was_created() {
         let db = InitDatabase::connect().unwrap();
-        let key = Keys::generate(db.conn());
+        let key = Keys::generate_new_key(db.conn(), "");
         println!("{:#?}", key);
 
         db.init().unwrap();
@@ -204,7 +188,12 @@ mod tests {
         let db = InitDatabase::connect().unwrap();
         db.init().unwrap();
 
-        let key = Keys::generate(db.conn());
+        // let (ip_addr, user_agent) = ("0.0.0.0", "USER-AGENT");
+
+        // let connection = Connections::new(db.conn(), ip_addr, user_agent);
+        // key.create(db.conn()).unwrap();
+
+        let key = Keys::generate_new_key(db.conn(), "");
         key.create(db.conn()).unwrap();
 
         assert!(keys::table.load::<Keys>(db.conn()).unwrap().contains(&key))
@@ -215,12 +204,38 @@ mod tests {
         let (ip_addr, user_agent) = ("0.0.0.0", "USER-AGENT");
         let db = InitDatabase::connect().unwrap();
         db.init().unwrap();
-        let connection = Connections::new(db.conn(), ip_addr, user_agent);
+        let connection = Connections::new(ip_addr, user_agent);
         connection.create(db.conn()).unwrap();
 
         assert!(connections::table
             .load::<Connections>(db.conn())
             .unwrap()
             .contains(&connection))
+    }
+    #[test]
+    async fn create_new_connection_with_its_key() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+
+        let (ip_addr, user_agent) = ("0.0.0.0", "USER-AGENT");
+
+        let connection = Connections::new(ip_addr, user_agent);
+        connection.create(db.conn()).unwrap();
+
+        let key = Keys::generate_new_key(db.conn(), &connection.uuid());
+        key.create(db.conn()).unwrap();
+
+        assert!(keys::table.load::<Keys>(db.conn()).unwrap().contains(&key));
+        assert!(connections::table
+            .load::<Connections>(db.conn())
+            .unwrap()
+            .contains(&connection));
+
+        for key in keys::table.load::<Keys>(db.conn()).unwrap() {
+            if key.conn(db.conn()).is_some() {
+                return;
+            }
+        }
+        assert!(false)
     }
 }

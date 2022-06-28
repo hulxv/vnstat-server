@@ -5,7 +5,11 @@ pub const CREATE_KEYS_QUERY: &str = r#"
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         value TEXT,
         created_at DATE,
-        expires_at DATE
+        expires_at DATE,
+        conn_uuid String NOT NULL,
+        CONSTRAINT fk_conn
+            FOREIGN KEY (conn_uuid)
+            REFERENCES connections(uuid)
     );
 "#;
 
@@ -14,10 +18,6 @@ pub const CREATE_CONNECTIONS_QUERY: &str = r#"
         uuid TEXT PRIMARY KEY,
         ip_addr TEXT,
         user_agent TEXT,
-        connected_at DATE,
-        key_id INTEGER NOT NULL,
-        CONSTRAINT fk_keys
-            FOREIGN KEY (key_id)
-            REFERENCES keys(id)
+        connected_at DATE
     );
 "#;
