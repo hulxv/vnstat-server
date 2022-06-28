@@ -1,4 +1,4 @@
-use super::schema::{connections, keys};
+use super::schema::*;
 use anyhow::{anyhow, Result};
 use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use uuid::Uuid;
@@ -11,6 +11,9 @@ use rand::{distributions::Alphanumeric, Rng};
 
 // TODO: read from configuration file
 const EXPIRE_KEY_DURATION_DAYS: i64 = 2;
+
+// Database Info
+pub const DATABASE_VERSION: i32 = 1;
 
 /// Create or insert new values.
 pub trait Create {
@@ -157,6 +160,69 @@ impl Create for Keys {
     type Output = Self;
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
         if let Err(e) = insert_into(keys::table).values(self).execute(conn) {
+            return Err(anyhow!(e));
+        }
+        Ok(self.clone())
+    }
+}
+
+#[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
+#[table_name = "info"]
+pub struct Info {
+    id: i32,
+    key: String,
+    value: String,
+}
+
+impl Info {
+    pub fn new(k: &str, v: &str, conn: &SqliteConnection) -> Self {
+        let last_id = match info::table.load::<Self>(conn) {
+            Err(_) => 0,
+            Ok(i) => match i.last() {
+                Some(ii) => ii.id,
+                None => 0,
+            },
+        };
+        Self {
+            id: last_id + 1,
+            key: k.to_owned(),
+            value: v.to_owned(),
+        }
+    }
+    pub fn key(&self) -> String {
+        self.key.clone()
+    }
+    pub fn value(&self) -> String {
+        self.value.clone()
+    }
+    pub fn setup(conn: &SqliteConnection) {
+        let expected_info = [("db_version", DATABASE_VERSION.to_string())];
+
+        let exist_info = info::table.load::<Info>(conn).unwrap();
+        for i in expected_info.iter() {
+            if exist_info.iter().find(|e| e.key().eq(i.0)).is_none() {
+                Info::new(i.0, &i.1, conn).create(conn).unwrap();
+            }
+        }
+    }
+
+    pub fn find(conn: &SqliteConnection, k: &str) -> Option<Self> {
+        match info::table
+            .load::<Info>(conn)
+            .unwrap()
+            .iter()
+            .find(|i| i.key().eq(k))
+        {
+            None => None,
+            Some(i) => Some(i.clone()),
+        }
+    }
+}
+
+impl Create for Info {
+    type Output = Self;
+    fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
+        if let Err(e) = insert_into(info::table).values(self).execute(conn) {
             return Err(anyhow!(e));
         }
         Ok(self.clone())

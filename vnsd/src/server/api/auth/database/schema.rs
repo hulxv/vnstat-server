@@ -1,5 +1,5 @@
 table! {
-    use diesel::sql_types::{Date,Text,Integer};
+    use diesel::sql_types::{Date,  Text};
     connections (uuid) {
         uuid -> Text,
         ip_addr -> Text,
@@ -16,5 +16,13 @@ table! {
         created_at -> Date,
         expires_at -> Date,
         conn_uuid -> Text,
+    }
+}
+table! {
+    use diesel::sql_types::{Text,Integer};
+    info (id) {
+        id -> Integer,
+        key -> Text,
+        value -> Text,
     }
 }

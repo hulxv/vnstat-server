@@ -2,11 +2,14 @@ mod model;
 mod query;
 mod schema;
 
+use model::*;
 use query::*;
+use schema::*;
 
 use anyhow::{anyhow, Result};
 use diesel::{
     dsl::sql_query,
+    expression::array_comparison::In,
     prelude::{Connection, SqliteConnection},
     RunQueryDsl,
 };
@@ -15,6 +18,8 @@ use std::{
     fs::{create_dir_all, File},
     path::Path,
 };
+
+// #[derive(Clone)]
 pub struct InitDatabase {
     pub conn: SqliteConnection,
 }
@@ -35,6 +40,23 @@ impl InitDatabase {
     }
 
     pub fn init(&self) -> Result<()> {
+        sql_query(CREATE_INFO_QUERY).execute(&self.conn).unwrap();
+
+        Info::setup(&self.conn);
+        let db_version = Info::find(&self.conn, "db_version").unwrap().value();
+
+        if DATABASE_VERSION > db_version.parse().unwrap() {
+            let tables = vec!["connections", "keys", "info"];
+
+            for t in tables.iter() {
+                sql_query(&format!("DROP TABLE IF EXISTS {t}"))
+                    .execute(&self.conn)
+                    .unwrap();
+            }
+            sql_query(CREATE_INFO_QUERY).execute(&self.conn).unwrap();
+            Info::setup(&self.conn);
+        }
+
         for q in [CREATE_KEYS_QUERY, CREATE_CONNECTIONS_QUERY].iter() {
             if let Err(e) = sql_query(*q).execute(&self.conn) {
                 return Err(anyhow!(e));
@@ -86,12 +108,11 @@ impl DatabaseFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::core::prelude::v1::test;
     use dirs::config_dir;
     use std::fs::remove_file;
 
     #[test]
-    fn get_database_file_path() {
+    async fn get_database_file_path() {
         let path = DatabaseFile::new().unwrap().path();
         println!("database path: {path}");
         assert_eq!(
@@ -104,7 +125,7 @@ mod tests {
         )
     }
     #[test]
-    fn create_database_if_not_exists() {
+    async fn create_database_if_not_exists() {
         DatabaseFile::new().unwrap().create_if_not_exists().unwrap();
 
         let path = DatabaseFile::new().unwrap().path();
@@ -113,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn initlize_database() {
+    async fn initlize_database() {
         use diesel::{sql_types::Text, QueryableByName};
         #[derive(Debug, QueryableByName, Clone, PartialEq)]
         struct Table {
