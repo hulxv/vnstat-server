@@ -12,10 +12,10 @@ use rand::{distributions::Alphanumeric, Rng};
 // TODO: read from configuration file
 const EXPIRE_KEY_DURATION_DAYS: i64 = 2;
 
-/// Implement create, read, update and delete for table.
+/// Create or insert new values.
 pub trait Create {
-    /// Create or insert new values.
-    fn create(&self, conn: &SqliteConnection) -> Result<()>;
+    type Output;
+    fn create(&self, conn: &SqliteConnection) -> Result<Self::Output>;
 }
 
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
@@ -52,11 +52,12 @@ impl Connections {
 }
 
 impl Create for Connections {
-    fn create(&self, conn: &SqliteConnection) -> Result<()> {
+    type Output = Self;
+    fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
         if let Err(e) = insert_into(connections::table).values(self).execute(conn) {
             return Err(anyhow!(e));
         }
-        Ok(())
+        Ok(self.clone())
     }
 }
 
@@ -75,7 +76,7 @@ impl Keys {
         let last_id = match keys::table.load::<Self>(conn) {
             Err(_) => 0,
             Ok(keys) => match keys.last() {
-                Some(key) => key.id(),
+                Some(key) => key.id,
                 None => 0,
             },
         };
@@ -107,9 +108,19 @@ impl Keys {
         }
     }
 
-    pub fn id(&self) -> i32 {
-        self.id
+    pub fn valid(conn: &SqliteConnection, key_value: &str) -> bool {
+        let keys = keys::table.load::<Self>(conn).unwrap();
+        for key in keys {
+            if key.value().eq(&key_value)
+                && key.conn(conn).is_some()
+                && Local::now() < key.expires_at()
+            {
+                return true;
+            }
+        }
+        false
     }
+
     pub fn value(&self) -> String {
         self.value.clone()
     }
@@ -135,19 +146,20 @@ impl std::default::Default for Keys {
         Self {
             id: 1,
             value: "".to_owned(),
-            created_at: Local::now().to_string(),
-            expires_at: "".to_owned(),
-            conn_uuid: "".to_owned(),
+            created_at: Local::now().to_rfc2822(),
+            expires_at: Local::now().to_rfc2822(),
+            conn_uuid: "UNKNOWN".to_owned(),
         }
     }
 }
 
 impl Create for Keys {
-    fn create(&self, conn: &SqliteConnection) -> Result<()> {
+    type Output = Self;
+    fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
         if let Err(e) = insert_into(keys::table).values(self).execute(conn) {
             return Err(anyhow!(e));
         }
-        Ok(())
+        Ok(self.clone())
     }
 }
 
@@ -237,5 +249,48 @@ mod tests {
             }
         }
         assert!(false)
+    }
+
+    #[test]
+    async fn validate_key() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+
+        let connection = Connections::new("0.0.0.0", "USER-AGENT");
+        connection.create(db.conn()).unwrap();
+
+        let valid_key = Keys::generate_new_key(db.conn(), &connection.uuid());
+        valid_key.create(db.conn()).unwrap();
+
+        let invalid_keys = vec![
+            // A key doesn't exist
+            Keys::default(),
+            // An exists key but connection uuid doesn't exist
+            Keys::generate_new_key(db.conn(), "UNKNOWN")
+                .create(db.conn())
+                .unwrap(),
+            // An exists key and connection uuid is exists but the key is expires
+            Keys {
+                id: match keys::table.load::<Keys>(db.conn()) {
+                    Err(_) => 0,
+                    Ok(keys) => match keys.last() {
+                        Some(key) => key.id,
+                        None => 0,
+                    },
+                } + 1,
+                value: "".to_owned(),
+                expires_at: Local::now().to_rfc2822(),
+                created_at: Local::now().to_rfc2822(),
+                conn_uuid: connection.uuid(),
+            }
+            .create(db.conn())
+            .unwrap(),
+        ];
+
+        assert_eq!(Keys::valid(db.conn(), &valid_key.value()), true);
+
+        for k in invalid_keys.iter() {
+            assert_eq!(Keys::valid(db.conn(), &k.value()), false);
+        }
     }
 }
