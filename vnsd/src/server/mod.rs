@@ -1,16 +1,12 @@
 pub mod api;
 pub mod http;
 
-use api::services;
-use anyhow::anyhow;
-use log::info;
+use api::{services,auth::Auth};
 use app;
 
 use std::{
     error::Error as ErrorTrait,
-    future::Future,
-    io::{self, Error as IOError, Result as IOResult, Write},
-    ops::DerefMut,
+    io::{Result as IOResult},
     pin::Pin,
     string::ToString,
     sync::{
@@ -20,8 +16,8 @@ use std::{
 };
 
 use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
-use actix_web::{middleware::Logger, web::{self,route}, App, HttpServer};
-
+use actix_web::{middleware::Logger, web::{self, route}, App, HttpServer};
+use actix_web_httpauth::middleware::HttpAuthentication;
 #[derive(Clone)]
 pub struct ServerHandlingError {
     cause: String,
@@ -180,15 +176,16 @@ impl ServerRunner {
     pub fn new(addr: ServerAddr) -> IOResult<ActixServer> {
         match HttpServer::new(|| {
             App::new()
-                .wrap(Logger::new(
-                    "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
-                ))
-                .service(
-                    web::scope("/api")
-                        .service(services::traffic::get_traffic)
-                        .service(services::interface::get_interface)
-                        .service(services::info::get_info)
-                        .service(services::config::get_config),
+            .wrap(Logger::new(
+                "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
+            ))
+            .service(
+                web::scope("/api")
+                .service(services::traffic::get_traffic)
+                .service(services::interface::get_interface)
+                .service(services::info::get_info)
+                .service(services::config::get_config)
+                .wrap(HttpAuthentication::bearer(Auth::validate)),
                         
                 ).default_service(route().to(services::not_found::not_found))
         })

@@ -3,7 +3,7 @@ mod query;
 mod schema;
 mod tests;
 
-use model::*;
+pub use model::*;
 use query::*;
 use schema::*;
 
