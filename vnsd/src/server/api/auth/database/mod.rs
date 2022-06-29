@@ -1,6 +1,7 @@
 mod model;
 mod query;
 mod schema;
+mod tests;
 
 use model::*;
 use query::*;
@@ -104,60 +105,5 @@ impl DatabaseFile {
     }
     pub fn path(&self) -> String {
         self.path.clone()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use dirs::config_dir;
-    use std::fs::remove_file;
-
-    #[test]
-    async fn get_database_file_path() {
-        let path = DatabaseFile::new().unwrap().path();
-        println!("database path: {path}");
-        assert_eq!(
-            path,
-            [
-                config_dir().unwrap().to_str().unwrap(),
-                "/vns/database/auth.db"
-            ]
-            .concat()
-        )
-    }
-    #[test]
-    async fn create_database_if_not_exists() {
-        DatabaseFile::new().unwrap().create_if_not_exists().unwrap();
-
-        let path = DatabaseFile::new().unwrap().path();
-        assert!(Path::new(&path).exists());
-        remove_file(path).unwrap()
-    }
-
-    #[test]
-    async fn initlize_database() {
-        use diesel::{sql_types::Text, QueryableByName};
-        #[derive(Debug, QueryableByName, Clone, PartialEq)]
-        struct Table {
-            #[sql_type = "Text"]
-            pub name: String,
-        }
-
-        let db = InitDatabase::connect().unwrap();
-
-        db.init().unwrap();
-        let tables = sql_query("SELECT name FROM sqlite_master WHERE type='table'")
-            .load::<Table>(&db.conn)
-            .unwrap();
-        let excepted_tables = vec!["connections", "keys"];
-
-        println!("{tables:#?}");
-
-        for table in excepted_tables.into_iter() {
-            assert!(tables.contains(&Table {
-                name: table.to_owned()
-            }))
-        }
     }
 }
