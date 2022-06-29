@@ -21,6 +21,18 @@ pub trait Create {
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output>;
 }
 
+pub trait Statements {
+    type Args;
+    type SelectOutput;
+    type FindOutput;
+    fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
+    where
+        F: Fn(Self::Args) -> bool;
+    fn find<F>(conn: &SqliteConnection, f: F) -> Self::FindOutput
+    where
+        F: Fn(Self::Args) -> bool;
+}
+
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
 #[table_name = "connections"]
 pub struct Connections {
@@ -61,6 +73,34 @@ impl Create for Connections {
             return Err(anyhow!(e));
         }
         Ok(self.clone())
+    }
+}
+
+impl Statements for Connections {
+    type Args = Self;
+    type SelectOutput = Vec<Self>;
+    type FindOutput = Option<Self>;
+    fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        connections::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .filter(|e| f(e.clone().into()))
+            .collect::<Self::SelectOutput>()
+    }
+
+    fn find<F>(conn: &SqliteConnection, f: F) -> Self::FindOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        connections::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .find(|e| f(e.clone().into()))
     }
 }
 
@@ -166,6 +206,34 @@ impl Create for Keys {
     }
 }
 
+impl Statements for Keys {
+    type Args = Self;
+    type SelectOutput = Vec<Self>;
+    type FindOutput = Option<Self>;
+    fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        keys::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .filter(|e| f(e.clone().into()))
+            .collect::<Self::SelectOutput>()
+    }
+
+    fn find<F>(conn: &SqliteConnection, f: F) -> Self::FindOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        keys::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .find(|e| f(e.clone().into()))
+    }
+}
+
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
 #[table_name = "info"]
 pub struct Info {
@@ -205,18 +273,6 @@ impl Info {
             }
         }
     }
-
-    pub fn find(conn: &SqliteConnection, k: &str) -> Option<Self> {
-        match info::table
-            .load::<Info>(conn)
-            .unwrap()
-            .iter()
-            .find(|i| i.key().eq(k))
-        {
-            None => None,
-            Some(i) => Some(i.clone()),
-        }
-    }
 }
 
 impl Create for Info {
@@ -226,6 +282,34 @@ impl Create for Info {
             return Err(anyhow!(e));
         }
         Ok(self.clone())
+    }
+}
+
+impl Statements for Info {
+    type Args = Self;
+    type SelectOutput = Vec<Self>;
+    type FindOutput = Option<Self>;
+    fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        info::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .filter(|e| f(e.clone().into()))
+            .collect::<Self::SelectOutput>()
+    }
+
+    fn find<F>(conn: &SqliteConnection, f: F) -> Self::FindOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        info::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .find(|e| f(e.clone().into()))
     }
 }
 
@@ -358,5 +442,148 @@ mod tests {
         for k in invalid_keys.iter() {
             assert_eq!(Keys::valid(db.conn(), &k.value()), false);
         }
+    }
+
+    #[test]
+    async fn select_columns_from_connections_table() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+
+        let connections = vec![
+            Connections::new("0.0.0.0", "user_agent")
+                .create(db.conn())
+                .unwrap(),
+            Connections::new("0.0.0.1", "user_agent")
+                .create(db.conn())
+                .unwrap(),
+            Connections::new("0.0.0.1", "user_agent")
+                .create(db.conn())
+                .unwrap(),
+            Connections::new("0.0.0.0", "user_agent")
+                .create(db.conn())
+                .unwrap(),
+        ];
+
+        let expected = vec![
+            connections.first().unwrap().uuid(),
+            connections.last().unwrap().uuid(),
+        ];
+
+        for uuid in expected {
+            assert!(Connections::select(db.conn(), |c| c.ip_addr() == "0.0.0.0")
+                .iter()
+                .map(|c| c.uuid())
+                .collect::<Vec<String>>()
+                .contains(&uuid));
+        }
+    }
+
+    #[test]
+    async fn select_columns_from_keys_table() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let _1st_conn_uuid = Connections::new("0.0.0.0", "user_agent")
+            .create(db.conn())
+            .unwrap()
+            .uuid();
+        let _2nd_conn_uuid = Connections::new("0.0.0.0", "user_agent")
+            .create(db.conn())
+            .unwrap()
+            .uuid();
+        let keys = vec![
+            Keys::generate_new_key(db.conn(), &_1st_conn_uuid)
+                .create(db.conn())
+                .unwrap()
+                .value(),
+            Keys::generate_new_key(db.conn(), &_2nd_conn_uuid)
+                .create(db.conn())
+                .unwrap()
+                .value(),
+            Keys::generate_new_key(db.conn(), &_1st_conn_uuid)
+                .create(db.conn())
+                .unwrap()
+                .value(),
+            Keys::generate_new_key(db.conn(), &_2nd_conn_uuid)
+                .create(db.conn())
+                .unwrap()
+                .value(),
+        ];
+
+        let _1st_expected = vec![keys[0].clone(), keys[2].clone()];
+        println!("1st: {_1st_expected:#?}");
+        for key_value in Keys::select(db.conn(), |k| {
+            if let Some(conn) = k.conn(db.conn()) {
+                return conn.uuid() == _1st_conn_uuid;
+            }
+            false
+        })
+        .iter()
+        .map(|k| k.value())
+        {
+            println!("{key_value}");
+            assert!(_1st_expected.contains(&key_value));
+        }
+
+        let _2nd_expected = vec![keys[1].clone(), keys[3].clone()];
+
+        println!("2nd: {_2nd_expected:#?}");
+        for key_value in Keys::select(db.conn(), |k| {
+            if let Some(conn) = k.conn(db.conn()) {
+                return conn.uuid() == _2nd_conn_uuid;
+            }
+            false
+        })
+        .iter()
+        .map(|k| k.value())
+        {
+            println!("{key_value}");
+            assert!(_2nd_expected.contains(&key_value));
+        }
+    }
+
+    #[test]
+    async fn select_columns_from_info_table() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let expected = vec![format!("{}", DATABASE_VERSION)];
+        for key_value in Info::select(db.conn(), |i| i.key() == "db_version")
+            .iter()
+            .map(|i| i.value())
+        {
+            assert!(expected.contains(&key_value));
+        }
+    }
+    #[test]
+    async fn find_column_in_connections_table() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let connections = vec![
+            Connections::new("0.0.0.0", "user_agent")
+                .create(db.conn())
+                .unwrap()
+                .uuid(),
+            Connections::new("1.1.1.1", "user_agent")
+                .create(db.conn())
+                .unwrap()
+                .uuid(),
+            Connections::new("0.0.0.1", "user_agent")
+                .create(db.conn())
+                .unwrap()
+                .uuid(),
+            Connections::new("0.0.0.0", "user_agent")
+                .create(db.conn())
+                .unwrap()
+                .uuid(),
+        ];
+
+        let expected = connections[1].clone();
+
+        assert_eq!(
+            expected,
+            Connections::find(db.conn(), |c| c.ip_addr() == "1.1.1.1"
+                && c.uuid() == expected)
+            .unwrap()
+            .uuid()
+        );
     }
 }

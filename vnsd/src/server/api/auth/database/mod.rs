@@ -43,7 +43,9 @@ impl InitDatabase {
         sql_query(CREATE_INFO_QUERY).execute(&self.conn).unwrap();
 
         Info::setup(&self.conn);
-        let db_version = Info::find(&self.conn, "db_version").unwrap().value();
+        let db_version = Info::find(&self.conn, |i| i.key() == "db_version")
+            .unwrap()
+            .value();
 
         if DATABASE_VERSION > db_version.parse().unwrap() {
             let tables = vec!["connections", "keys", "info"];
