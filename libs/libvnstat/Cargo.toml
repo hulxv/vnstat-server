@@ -8,4 +8,5 @@ authors = ["Mohamed Emad (hulxxv@gmail.com)"]
 diesel = { version = "1.4.8", default-features = false, features = ["sqlite"] }
 anyhow = "1.0.55"
 serde = { version = "1.0.13", features = ["derive"] }
+systemctl = "0.1.6"
 app = {path="../../app"}
