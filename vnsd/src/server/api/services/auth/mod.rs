@@ -4,7 +4,6 @@ use actix_web::{
     dev::ConnectionInfo, http::header::USER_AGENT, post, web, HttpRequest, HttpResponse,
 };
 use serde_derive::Deserialize;
-use serde_json::json;
 
 #[derive(Deserialize)]
 pub struct Payload {
@@ -22,8 +21,11 @@ pub async fn login(
         req.headers().get(USER_AGENT).unwrap().to_str().unwrap(),
     ) {
         Ok(result) => HttpResponse::Ok().json(result),
-        Err(err) => HttpResponse::Unauthorized().json(json!(ResponseError::new()
-            .code(401)
-            .details(err.message().as_str()))),
+        Err(err) => HttpResponse::Unauthorized().json(
+            ResponseError::new()
+                .code(401)
+                .details(err.message().as_str())
+                .build(),
+        ),
     }
 }
