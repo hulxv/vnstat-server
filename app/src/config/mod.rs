@@ -9,24 +9,34 @@ use toml::value::Value;
 use utils::file::File;
 
 pub mod auth;
+pub mod security;
 pub mod server;
 pub mod vnstat;
 
-use self::{auth::AuthConfigs, server::ServerConfigs, vnstat::VnstatConfigs};
+use self::{
+    auth::AuthConfigs, security::SecurityConfigs, server::ServerConfigs, vnstat::VnstatConfigs,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Configs {
     pub server: ServerConfigs,
     pub auth: AuthConfigs,
     pub vnstat: VnstatConfigs,
+    pub security: SecurityConfigs,
 }
 
 impl Configs {
-    pub fn from(server: ServerConfigs, auth: AuthConfigs, vnstat: VnstatConfigs) -> Self {
+    pub fn from(
+        server: ServerConfigs,
+        auth: AuthConfigs,
+        vnstat: VnstatConfigs,
+        security: SecurityConfigs,
+    ) -> Self {
         Self {
             server,
             auth,
             vnstat,
+            security,
         }
     }
 
@@ -44,6 +54,7 @@ impl Configs {
             ServerConfigs::from("0.0.0.0", 8080),
             AuthConfigs::from("1234", 1),
             VnstatConfigs::from("/etc/vnstat.conf"),
+            SecurityConfigs::from(true),
         )
     }
 

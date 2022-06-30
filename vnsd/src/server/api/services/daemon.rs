@@ -1,7 +1,8 @@
-use actix_web::{get, post, HttpResponse};
-
 use crate::http::response::*;
+use app::Configs;
 use libvnstat::VnStat;
+
+use actix_web::{get, post, HttpResponse};
 use log::error;
 use serde_json::json;
 
@@ -23,6 +24,14 @@ pub async fn get_daemon_status() -> HttpResponse {
 
 #[post("/daemon/restart")]
 pub async fn restart_daemon() -> HttpResponse {
+    if Configs::init().unwrap().security.read_only {
+        return HttpResponse::Forbidden().json(
+            ResponseError::new()
+                .code(403)
+                .details("Cannot do this operation: read-only mode was activated.")
+                .build(),
+        );
+    }
     match VnStat.daemon().restart() {
         Ok(exit_status) => match exit_status.success() {
             true => HttpResponse::Ok().json(
@@ -46,6 +55,15 @@ pub async fn restart_daemon() -> HttpResponse {
 }
 #[post("/daemon/stop")]
 pub async fn stop_daemon() -> HttpResponse {
+    if Configs::init().unwrap().security.read_only {
+        return HttpResponse::Forbidden().json(
+            ResponseError::new()
+                .code(403)
+                .details("Cannot do this operation: read-only mode was activated.")
+                .build(),
+        );
+    }
+
     match VnStat.daemon().stop() {
         Ok(exit_status) => match exit_status.success() {
             true => HttpResponse::Ok().json(
