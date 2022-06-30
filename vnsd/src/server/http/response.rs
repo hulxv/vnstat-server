@@ -2,7 +2,7 @@ use erased_serde::Serialize as ErasedSerialize;
 use serde_derive::Serialize;
 // use serde::Serialize;
 
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Clone)]
 pub struct Response<S>
 where
     S: ErasedSerialize + Clone,
@@ -33,7 +33,7 @@ where
 
 impl<S> ResponseBuilder<S>
 where
-    S: ErasedSerialize + Copy + Clone,
+    S: ErasedSerialize + Clone,
 {
     pub fn status(&mut self, status: ResponseStatus) -> &mut Self {
         self.status = Some(status);
@@ -45,12 +45,12 @@ where
     }
     pub fn build(&mut self) -> Response<S> {
         Response {
-            status: self.status.unwrap(),
-            data: self.data.unwrap(),
+            status: self.status.clone().unwrap(),
+            data: self.data.clone().unwrap(),
         }
     }
 }
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Clone)]
 
 pub enum ResponseStatus {
     #[serde(rename(serialize = "success"))]
