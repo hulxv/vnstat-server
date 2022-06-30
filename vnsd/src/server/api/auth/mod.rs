@@ -6,8 +6,47 @@ use actix_web_httpauth::extractors::{
     bearer::{BearerAuth, Config},
     AuthenticationError,
 };
-use database::{InitDatabase, Keys};
-use log::warn;
+use app::Configs;
+use database::{Connections, Create, InitDatabase, Keys, Statements};
+use log::*;
+use serde_derive::Serialize;
+
+#[derive(Serialize)]
+pub struct AuthResponse {
+    pub uuid: String,
+    pub key: Key,
+}
+
+impl AuthResponse {
+    fn new(uuid: String, key: Key) -> Self {
+        Self { key, uuid }
+    }
+}
+
+#[derive(Serialize)]
+pub struct Key {
+    value: String,
+    expires_at: String,
+}
+impl Key {
+    fn new(value: String, expires_at: String) -> Self {
+        Self { value, expires_at }
+    }
+}
+
+pub enum AuthErrors {
+    IncorrectPassword,
+}
+
+impl AuthErrors {
+    pub fn message(&self) -> String {
+        use AuthErrors::*;
+        match self {
+            IncorrectPassword => "Password is incorrect",
+        }
+        .to_string()
+    }
+}
 
 pub struct Auth;
 
@@ -23,7 +62,7 @@ impl Auth {
             true => Ok(req),
             _ => {
                 warn!(
-                    "Auth validate faild \n\t IP address: {} \n\t Peer address: {} \n\t User Agent: {:?} \n\t Authorization Token: {}",
+                    "Auth validate failed \n\t IP address: {} \n\t Peer address: {} \n\t User Agent: {:?} \n\t Authorization Token: {}",
                     req.connection_info().realip_remote_addr().unwrap_or("UNKNOWN"),
                     req.connection_info().peer_addr().unwrap_or("UNKNOWN"),
                     req.headers().get(USER_AGENT).unwrap_or(&HeaderValue::from_str("UNKNOWN").unwrap()),
@@ -38,6 +77,39 @@ impl Auth {
                     .unwrap_or_else(Default::default);
                 Err(AuthenticationError::from(config).into())
             }
+        }
+    }
+
+    pub fn login(
+        password: &str,
+        ip_addr: &str,
+        user_agent: &str,
+    ) -> Result<AuthResponse, AuthErrors> {
+        if Configs::init().unwrap().auth.password.eq(password) {
+            let db = InitDatabase::connect().unwrap();
+            db.init().map_err(|e| error!("{e}")).unwrap();
+
+            let conn = match Connections::find(db.conn(), |c| {
+                c.ip_addr() == ip_addr && c.user_agent() == user_agent
+            }) {
+                None => Connections::new(ip_addr, user_agent)
+                    .create(db.conn())
+                    .unwrap(),
+                Some(conn) => conn,
+            };
+
+            let key = match Keys::find(db.conn(), |k| k.conn(db.conn()).unwrap() == conn) {
+                Some(k) => k,
+                None => Keys::generate_new_key(db.conn(), &conn.uuid())
+                    .create(db.conn())
+                    .unwrap(),
+            };
+            Ok(AuthResponse::new(
+                conn.uuid(),
+                Key::new(key.value(), key.expires_at().to_rfc2822()),
+            ))
+        } else {
+            Err(AuthErrors::IncorrectPassword)
         }
     }
 }

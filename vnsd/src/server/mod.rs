@@ -1,12 +1,12 @@
 pub mod api;
 pub mod http;
 
-use api::{services,auth::Auth};
+use api::{auth::Auth, services};
 use app;
 
 use std::{
     error::Error as ErrorTrait,
-    io::{Result as IOResult},
+    io::Result as IOResult,
     pin::Pin,
     string::ToString,
     sync::{
@@ -16,7 +16,11 @@ use std::{
 };
 
 use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
-use actix_web::{middleware::Logger, web::{self, route}, App, HttpServer};
+use actix_web::{
+    middleware::Logger,
+    web::{self, route},
+    App, HttpServer,
+};
 use actix_web_httpauth::middleware::HttpAuthentication;
 #[derive(Clone)]
 pub struct ServerHandlingError {
@@ -179,6 +183,8 @@ impl ServerRunner {
             .wrap(Logger::new(
                 "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
             ))
+            .service(web::scope("/api/auth").service(services::auth::login)
+        )
             .service(
                 web::scope("/api")
                 .service(services::traffic::get_traffic)
@@ -186,8 +192,7 @@ impl ServerRunner {
                 .service(services::info::get_info)
                 .service(services::config::get_config)
                 .wrap(HttpAuthentication::bearer(Auth::validate)),
-                        
-                ).default_service(route().to(services::not_found::not_found))
+            ).default_service(route().to(services::not_found::not_found))
         })
         .bind(addr.get_tuple())
             {
