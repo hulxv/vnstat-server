@@ -27,10 +27,14 @@ impl Logger {
                 if record.level().eq(&Level::Error) {
                     // Wrtie to stderr
                     eprintln!(
-                        "[{}] -> {} : {}",
+                        "[{}] {} -> {} : {} \n\t {}",
                         buf.timestamp().to_string().bold().yellow(),
+                        record.target().to_string().bold(),
                         record.level().to_string().bold().red(),
-                        record.args().to_string().bold()
+                        record.args().to_string().bold(),
+                        ("from: ".to_owned() + record.file().unwrap())
+                            .bold()
+                            .to_string(),
                     );
                 } else {
                     // Write to stdout (default)
