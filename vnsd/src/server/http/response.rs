@@ -1,12 +1,11 @@
 use erased_serde::Serialize as ErasedSerialize;
-use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use serde_derive::Serialize;
 // use serde::Serialize;
-use std::error::Error;
 
 #[derive(Serialize, Clone, Copy)]
 pub struct Response<S>
 where
-    S: ErasedSerialize + Clone + Copy,
+    S: ErasedSerialize + Clone,
 {
     pub status: ResponseStatus,
     pub data: S,
@@ -14,7 +13,7 @@ where
 
 impl<S> Response<S>
 where
-    S: ErasedSerialize + Clone + Copy,
+    S: ErasedSerialize + Clone,
 {
     pub fn new() -> ResponseBuilder<S> {
         ResponseBuilder {
@@ -59,10 +58,10 @@ pub enum ResponseStatus {
     #[serde(rename(serialize = "failed"))]
     Failed,
 }
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Clone)]
 pub struct ResponseError {
     pub code: u32,
-    pub details: &'static str,
+    pub details: String,
 }
 
 impl ResponseError {
@@ -78,7 +77,7 @@ impl ResponseError {
 
 pub struct ResponseErrorBuilder {
     pub code: Option<u32>,
-    pub details: Option<&'static str>,
+    pub details: Option<String>,
 }
 
 impl ResponseErrorBuilder {
@@ -86,8 +85,8 @@ impl ResponseErrorBuilder {
         self.code = Some(code);
         self
     }
-    pub fn details(&mut self, details: &'static str) -> &mut Self {
-        self.details = Some(details);
+    pub fn details(&mut self, details: &str) -> &mut Self {
+        self.details = Some(details.to_owned());
         self
     }
 
@@ -96,10 +95,10 @@ impl ResponseErrorBuilder {
             status: ResponseStatus::Failed,
             data: ResponseError {
                 code: self.code.unwrap_or(500),
-                details: self.details.unwrap_or( "There's an internal server error happend, Please check 'vns' logs for more details"
+                details: self.details.clone().unwrap_or( "There's an internal server error happend, Please check 'vns' logs for more details".to_owned()
                    ),
             },
-        }
+        }.clone()
     }
 }
 
