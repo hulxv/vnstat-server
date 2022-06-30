@@ -98,9 +98,14 @@ impl Auth {
                 Some(conn) => conn,
             };
 
-            let key = match Keys::find(db.conn(), |k| k.conn(db.conn()).unwrap() == conn) {
-                Some(k) => k,
-                None => Keys::generate_new_key(db.conn(), &conn.uuid())
+            let key = match Keys::find(db.conn(), |k| {
+                if let Some(k_conn) = k.conn(db.conn()) {
+                    return k_conn == conn;
+                }
+                false
+            }) {
+                Some(k) if Keys::valid(db.conn(), &k.value()) => k,
+                _ => Keys::generate_new_key(db.conn(), &conn.uuid())
                     .create(db.conn())
                     .unwrap(),
             };
