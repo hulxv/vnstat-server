@@ -10,7 +10,6 @@ use schema::*;
 use anyhow::{anyhow, Result};
 use diesel::{
     dsl::sql_query,
-    expression::array_comparison::In,
     prelude::{Connection, SqliteConnection},
     RunQueryDsl,
 };

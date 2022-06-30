@@ -54,12 +54,15 @@ async fn initlize_database() {
 }
 #[test]
 async fn when_key_will_expires() {
+    use app::Configs;
     let db = InitDatabase::connect().unwrap();
 
     db.init().unwrap();
     assert_eq!(
         Local::now()
-            .checked_add_signed(Duration::days(EXPIRE_KEY_DURATION_DAYS))
+            .checked_add_signed(Duration::days(
+                Configs::init().unwrap().auth.key_expire_duration
+            ))
             .unwrap()
             .to_rfc2822(),
         Keys::generate_new_key(db.conn().clone(), "")

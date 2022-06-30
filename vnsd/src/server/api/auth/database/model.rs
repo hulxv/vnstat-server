@@ -3,14 +3,12 @@ use anyhow::{anyhow, Result};
 use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use uuid::Uuid;
 
+use app::Configs;
 use chrono::{
     prelude::{DateTime, Local},
     Duration, FixedOffset,
 };
 use rand::{distributions::Alphanumeric, Rng};
-
-// TODO: read from configuration file
-pub const EXPIRE_KEY_DURATION_DAYS: i64 = 2;
 
 // Database Info
 pub const DATABASE_VERSION: i32 = 1;
@@ -134,14 +132,13 @@ impl Keys {
                     continue 'outer;
                 }
             }
-
             return Self {
                 id: last_id + 1,
                 value,
                 created_at: Local::now().to_rfc2822(),
-                expires_at: match Local::now()
-                    .checked_add_signed(Duration::days(EXPIRE_KEY_DURATION_DAYS))
-                {
+                expires_at: match Local::now().checked_add_signed(Duration::days(
+                    Configs::init().unwrap().auth.key_expire_duration,
+                )) {
                     Some(dt) => dt,
                     None => Local::now(),
                 }

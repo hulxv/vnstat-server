@@ -42,7 +42,7 @@ impl Configs {
     pub fn default() -> Self {
         Configs::from(
             ServerConfigs::from("0.0.0.0", 8080),
-            AuthConfigs::from("1234"),
+            AuthConfigs::from("1234", 1),
             VnstatConfigs::from("/etc/vnstat.conf"),
         )
     }
