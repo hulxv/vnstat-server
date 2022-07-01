@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 use log::warn;
 use std::{
     collections::HashMap,
-    fs::remove_file,
+    fs::{remove_file, set_permissions, Permissions},
+    os::unix::fs::PermissionsExt,
     path::Path,
     str::{from_utf8, FromStr},
     string::ToString,
@@ -70,14 +71,20 @@ impl UnixSocket {
                 Ok(_) => warn!("Unix listener address has been removed"),
             };
         }
+
+        let sock: UnixSocket;
         match UnixListener::bind(path) {
-            Err(e) => Err(anyhow!(e)),
-            Ok(listener) => Ok(Self {
-                listener: Some(listener),
-                stream: None,
-                side: UnixSocketSide::Server,
-            }),
+            Err(e) => return Err(anyhow!(e)),
+            Ok(listener) => {
+                sock = Self {
+                    listener: Some(listener),
+                    stream: None,
+                    side: UnixSocketSide::Server,
+                }
+            }
         }
+        set_permissions(path, Permissions::from_mode(0o666))?;
+        Ok(sock)
     }
 
     /// Connect to unix socket
