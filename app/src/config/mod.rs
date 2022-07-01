@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use dirs;
+use log::*;
 use serde_derive::{Deserialize, Serialize};
 use std::{
     fs,
@@ -67,12 +68,12 @@ impl Configs {
 
         match Self::is_any_prop_missing() {
             true => {
-                println!("Some properties are missing, so we need to reset the configuration file so that it won't do any harm.");
+                warn!("Some properties are missing, so we need to reset the configuration file so that it won't do any harm.");
                 match Self::reset() {
                     Err(e) => return Err(anyhow!("operation failed: {}", e)),
                     Ok(_) => {
-                        println!(
-                            "[{}]Configuration file was reset successfully.",
+                        info!(
+                            "Configuration file [{}] was reset successfully.",
                             Self::get_file_path()?
                         );
                     }
