@@ -5,37 +5,40 @@ use std::{
     process::{Child, Command as StdCommand, Stdio},
 };
 
-trait CommandProps {
-    fn get_args(&self) -> &Vec<&str>;
-    fn get_program(&self) -> &str;
-    fn get_envs(&self) -> Vec<(&str, &str)>;
+pub trait CommandProps {
+    fn get_args(&self) -> Vec<String>;
+    fn get_program(&self) -> String;
+    fn get_envs(&self) -> Vec<(String, String)>;
     fn get_current_dir(&self) -> &Path;
     fn status(&self);
 }
 
-trait CommandIO {
+pub trait CommandOutput {
     fn stdout(&self) -> Result<String>;
-    fn stdin(&self) -> Result<String>;
     fn stderr(&self) -> Result<String>;
 }
 
 #[derive(Debug)]
 pub struct Command {
     command: StdCommand,
-    program: &'static str,
-    args: Vec<&'static str>,
+    program: String,
+    args: Vec<String>,
 }
 
 impl Command {
-    pub fn new<'a>(cmd: &'static str) -> Self {
+    pub fn new(cmd: &str) -> Self {
         let pattern = Regex::new(r#"[^\s"']+|"([^"]*)"|'([^']*)'"#).unwrap();
-        let matches: Vec<&str> = pattern.find_iter(cmd).map(|m| m.as_str()).collect();
+        let matches: Vec<String> = pattern
+            .find_iter(cmd.clone())
+            .map(|m| m.as_str().to_string())
+            .collect();
         let mut command = StdCommand::new("sh");
         command.arg("-c");
         command.arg(cmd);
+        println!("{:?}", command);
         Command {
             command: command,
-            program: matches[0],
+            program: matches[0].to_owned(),
             args: matches[1..].to_vec(),
         }
     }
@@ -44,7 +47,7 @@ impl Command {
         todo!()
     }
     pub fn exec(&self) -> Result<Child> {
-        match StdCommand::new(self.program)
+        match StdCommand::new(self.program.clone())
             .args(&self.args)
             .stdout(Stdio::piped())
             .spawn()
@@ -55,9 +58,9 @@ impl Command {
     }
 }
 
-impl CommandIO for Command {
+impl CommandOutput for Command {
     fn stdout(&self) -> Result<String> {
-        match StdCommand::new(self.program)
+        match StdCommand::new(self.program.clone())
             .args(&self.args)
             .stdout(Stdio::piped())
             .output()
@@ -67,26 +70,35 @@ impl CommandIO for Command {
         }
     }
     fn stderr(&self) -> Result<String> {
-        todo!()
-    }
-    fn stdin(&self) -> Result<String> {
-        todo!()
+        match StdCommand::new(self.program.clone())
+            .args(&self.args)
+            .stdout(Stdio::piped())
+            .output()
+        {
+            Err(err) => Err(anyhow!(err)),
+            Ok(output) => Ok(String::from_utf8(output.stderr)?),
+        }
     }
 }
 
 impl CommandProps for Command {
-    fn get_program(&self) -> &str {
-        self.program
+    fn get_program(&self) -> String {
+        self.program.clone()
     }
 
-    fn get_args(&self) -> &Vec<&str> {
-        &self.args
+    fn get_args(&self) -> Vec<String> {
+        self.args.clone()
     }
-    fn get_envs(&self) -> Vec<(&str, &str)> {
+    fn get_envs(&self) -> Vec<(String, String)> {
         self.command
             .get_envs()
-            .map(|(_0, _1)| (_0.to_str().unwrap(), _1.unwrap().to_str().unwrap()))
-            .collect::<Vec<(&str, &str)>>()
+            .map(|(_0, _1)| {
+                (
+                    _0.to_string_lossy().to_string(),
+                    _1.unwrap().to_string_lossy().to_string(),
+                )
+            })
+            .collect::<Vec<(String, String)>>()
     }
     fn get_current_dir(&self) -> &Path {
         &self.command.get_current_dir().unwrap()
