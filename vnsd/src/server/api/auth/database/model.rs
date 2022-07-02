@@ -148,7 +148,7 @@ impl Keys {
         }
     }
 
-    pub fn valid(conn: &SqliteConnection, key_value: &str) -> bool {
+    pub fn is_valid(conn: &SqliteConnection, key_value: &str) -> bool {
         let keys = keys::table.load::<Self>(conn).unwrap();
         for key in keys {
             if key.value().eq(&key_value)

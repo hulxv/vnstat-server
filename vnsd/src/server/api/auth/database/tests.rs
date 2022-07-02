@@ -172,10 +172,10 @@ async fn validate_key() {
         .unwrap(),
     ];
 
-    assert_eq!(Keys::valid(db.conn(), &valid_key.value()), true);
+    assert_eq!(Keys::is_valid(db.conn(), &valid_key.value()), true);
 
     for k in invalid_keys.iter() {
-        assert_eq!(Keys::valid(db.conn(), &k.value()), false);
+        assert_eq!(Keys::is_valid(db.conn(), &k.value()), false);
     }
 }
 

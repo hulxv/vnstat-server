@@ -61,7 +61,7 @@ impl Auth {
         let db = InitDatabase::connect().unwrap();
         db.init().unwrap();
 
-        match Keys::valid(db.conn(), credentials.token()) {
+        match Keys::is_valid(db.conn(), credentials.token()) {
             true => Ok(req),
             _ => {
                 warn!(
@@ -107,7 +107,7 @@ impl Auth {
                 }
                 false
             }) {
-                Some(k) if Keys::valid(db.conn(), &k.value()) => k,
+                Some(k) if Keys::is_valid(db.conn(), &k.value()) => k,
                 _ => Keys::generate_new_key(db.conn(), &conn.uuid())
                     .create(db.conn())
                     .unwrap(),
