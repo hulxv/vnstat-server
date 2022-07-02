@@ -1,7 +1,10 @@
 pub mod database;
 
-use actix_http::header::{HeaderValue, USER_AGENT};
-use actix_web::{dev::ServiceRequest, Error};
+use actix_web::{
+    dev::ServiceRequest,
+    http::header::{HeaderValue, USER_AGENT},
+    Error,
+};
 use actix_web_httpauth::extractors::{
     bearer::{BearerAuth, Config},
     AuthenticationError,
