@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
+use derivative::Derivative;
 use dirs;
-use log::*;
 use serde_derive::{Deserialize, Serialize};
 use std::{
     fs,
@@ -14,24 +14,24 @@ pub mod security;
 pub mod server;
 pub mod vnstat;
 
-use self::{
-    auth::AuthConfigs, security::SecurityConfigs, server::ServerConfigs, vnstat::VnstatConfigs,
-};
+use self::{auth::*, security::*, server::*, vnstat::*};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Derivative)]
 pub struct Configs {
-    pub server: ServerConfigs,
-    pub auth: AuthConfigs,
-    pub vnstat: VnstatConfigs,
-    pub security: SecurityConfigs,
+    server: Option<ServerConfigs>,
+
+    auth: Option<AuthConfigs>,
+
+    vnstat: Option<VnstatConfigs>,
+    security: Option<SecurityConfigs>,
 }
 
 impl Configs {
     pub fn from(
-        server: ServerConfigs,
-        auth: AuthConfigs,
-        vnstat: VnstatConfigs,
-        security: SecurityConfigs,
+        server: Option<ServerConfigs>,
+        auth: Option<AuthConfigs>,
+        vnstat: Option<VnstatConfigs>,
+        security: Option<SecurityConfigs>,
     ) -> Self {
         Self {
             server,
@@ -41,21 +41,12 @@ impl Configs {
         }
     }
 
-    pub fn is_any_prop_missing() -> bool {
-        toml::from_str::<Self>(
-            fs::read_to_string(Self::get_file_path().unwrap())
-                .unwrap()
-                .as_str(),
-        )
-        .is_err()
-    }
-
     pub fn default() -> Self {
         Configs::from(
-            ServerConfigs::from("0.0.0.0", 8080),
-            AuthConfigs::from("1234", 1),
-            VnstatConfigs::from("/etc/vnstat.conf"),
-            SecurityConfigs::from(true),
+            Some(ServerConfigs::default()),
+            Some(AuthConfigs::default()),
+            Some(VnstatConfigs::default()),
+            Some(SecurityConfigs::default()),
         )
     }
 
@@ -66,21 +57,6 @@ impl Configs {
             _ => Ok(()),
         };
 
-        match Self::is_any_prop_missing() {
-            true => {
-                warn!("Some properties are missing, so we need to reset the configuration file so that it won't do any harm.");
-                match Self::reset() {
-                    Err(e) => return Err(anyhow!("operation failed: {}", e)),
-                    Ok(_) => {
-                        info!(
-                            "Configuration file [{}] was reset successfully.",
-                            Self::get_file_path()?
-                        );
-                    }
-                }
-            }
-            _ => (),
-        }
         Ok(toml::from_str(
             fs::read_to_string(Self::get_file_path()?)?.as_str(),
         )?)
@@ -154,6 +130,19 @@ impl Configs {
             }
         };
         Ok([config_dir.unwrap(), "/vns/vns.config.toml".to_owned()].concat())
+    }
+
+    pub fn vnstat(&self) -> VnstatConfigs {
+        self.vnstat.clone().unwrap_or_default()
+    }
+    pub fn server(&self) -> ServerConfigs {
+        self.server.clone().unwrap_or_default()
+    }
+    pub fn security(&self) -> SecurityConfigs {
+        self.security.clone().unwrap_or_default()
+    }
+    pub fn auth(&self) -> AuthConfigs {
+        self.auth.clone().unwrap_or_default()
     }
 }
 

@@ -30,7 +30,7 @@ pub struct Payload {
 
 #[put("/config")]
 pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
-    if Configs::init().unwrap().security.read_only {
+    if Configs::init().unwrap().security().read_only() {
         return HttpResponse::Forbidden().json(
             ResponseError::new()
                 .code(403)

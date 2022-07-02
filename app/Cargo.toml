@@ -15,3 +15,4 @@ dirs = "4.0.0"
 serde = { version = "1.0.13", features = ["derive"] }
 utils = {path="../libs/utils"}
 colored = "2.0.0"
+derivative = "2.2.0"

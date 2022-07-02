@@ -85,7 +85,7 @@ impl Auth {
         ip_addr: &str,
         user_agent: &str,
     ) -> Result<AuthResponse, AuthErrors> {
-        if Configs::init().unwrap().auth.password.eq(password) {
+        if Configs::init().unwrap().auth().password().eq(password) {
             let db = InitDatabase::connect().unwrap();
             db.init().map_err(|e| error!("{e}")).unwrap();
 

@@ -137,7 +137,7 @@ impl Keys {
                 value,
                 created_at: Local::now().to_rfc2822(),
                 expires_at: match Local::now().checked_add_signed(Duration::days(
-                    Configs::init().unwrap().auth.key_expire_duration,
+                    Configs::init().unwrap().auth().key_expire_duration(),
                 )) {
                     Some(dt) => dt,
                     None => Local::now(),

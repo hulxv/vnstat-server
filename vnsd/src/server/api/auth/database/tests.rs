@@ -61,7 +61,7 @@ async fn when_key_will_expires() {
     assert_eq!(
         Local::now()
             .checked_add_signed(Duration::days(
-                Configs::init().unwrap().auth.key_expire_duration
+                Configs::init().unwrap().auth().key_expire_duration()
             ))
             .unwrap()
             .to_rfc2822(),

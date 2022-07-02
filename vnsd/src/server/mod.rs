@@ -223,7 +223,8 @@ impl ServerAddr {
 
     pub fn from_config_file() -> Self {
         let configs = app::config::Configs::init().unwrap();
-        let (ip, port) = (configs.server.ip, configs.server.port as u16);
+        let (ip, port) = (configs.server().ip(), configs.server().port() as u16);
+
         Self { ip, port }
     }
 

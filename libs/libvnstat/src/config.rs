@@ -60,7 +60,7 @@ impl VnStatConfig {
 impl Default for VnStatConfig {
     fn default() -> Self {
         Self {
-            path: Configs::init().unwrap().vnstat.config_file,
+            path: Configs::init().unwrap().vnstat().config_file(),
         }
     }
 }

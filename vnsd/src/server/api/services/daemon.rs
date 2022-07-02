@@ -24,7 +24,7 @@ pub async fn get_daemon_status() -> HttpResponse {
 
 #[post("/daemon/restart")]
 pub async fn restart_daemon() -> HttpResponse {
-    if Configs::init().unwrap().security.read_only {
+    if Configs::init().unwrap().security().read_only() {
         return HttpResponse::Forbidden().json(
             ResponseError::new()
                 .code(403)
@@ -55,7 +55,7 @@ pub async fn restart_daemon() -> HttpResponse {
 }
 #[post("/daemon/stop")]
 pub async fn stop_daemon() -> HttpResponse {
-    if Configs::init().unwrap().security.read_only {
+    if Configs::init().unwrap().security().read_only() {
         return HttpResponse::Forbidden().json(
             ResponseError::new()
                 .code(403)
