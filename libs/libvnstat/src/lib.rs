@@ -23,7 +23,7 @@ impl VnStat {
         VnStatDatabase::default()
     }
     pub fn config(&self) -> VnStatConfig {
-        VnStatConfig
+        VnStatConfig::default()
     }
     pub fn info(&self) -> VnStatInfo {
         VnStatInfo

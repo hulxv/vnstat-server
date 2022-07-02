@@ -1,7 +1,9 @@
 use crate::http::response::*;
-use actix_web::{get, post, HttpResponse};
+use actix_web::{get, put, web, HttpResponse};
 use libvnstat::VnStat;
-use log::error;
+use log::{error, info};
+use serde_derive::{Deserialize, Serialize};
+use serde_json::json;
 
 #[get("/config")]
 pub async fn get_config() -> HttpResponse {
@@ -19,7 +21,31 @@ pub async fn get_config() -> HttpResponse {
     }
 }
 
-#[post("/config")]
-pub async fn edit_config(key: String, value: String) -> HttpResponse {
-    todo!()
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Payload {
+    pub key: String,
+    pub value: String,
+}
+
+#[put("/config")]
+pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
+    match VnStat
+        .config()
+        .set_prop(&payload.clone().key, &payload.clone().value)
+        .await
+    {
+        Ok(exit_status) => {
+            info!("{exit_status}");
+            HttpResponse::Ok().json(
+                Response::new()
+                    .status(ResponseStatus::Success)
+                    .data(json!({ payload.clone().key: payload.clone().value }))
+                    .build(),
+            )
+        }
+        Err(err) => {
+            error!("{err}");
+            HttpResponse::InternalServerError().json(ResponseError::new().build())
+        }
+    }
 }

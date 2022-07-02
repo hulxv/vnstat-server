@@ -191,6 +191,7 @@ impl ServerRunner {
                 .service(services::interface::get_interface)
                 .service(services::info::get_info)
                 .service(services::config::get_config)
+                .service(services::config::edit_config)
                 .service(services::daemon::get_daemon_status)
                 .service(services::daemon::stop_daemon)
                 .service(services::daemon::restart_daemon)
