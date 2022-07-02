@@ -1,5 +1,6 @@
 use crate::http::response::*;
 use actix_web::{get, put, web, HttpResponse};
+use app::config::Configs;
 use libvnstat::VnStat;
 use log::{error, info};
 use serde_derive::{Deserialize, Serialize};
@@ -29,6 +30,14 @@ pub struct Payload {
 
 #[put("/config")]
 pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
+    if Configs::init().unwrap().security.read_only {
+        return HttpResponse::Forbidden().json(
+            ResponseError::new()
+                .code(403)
+                .details("Cannot do this operation: read-only mode was activated.")
+                .build(),
+        );
+    }
     match VnStat
         .config()
         .set_prop(&payload.clone().key, &payload.clone().value)
