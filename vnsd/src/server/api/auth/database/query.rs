@@ -28,3 +28,10 @@ pub const CREATE_INFO_QUERY: &str = r#"
         value TEXT
     );
 "#;
+pub const CREATE_BLOCK_LIST_QUERY: &str = r#"
+    CREATE TABLE IF NOT EXISTS block_list (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_addr TEXT,
+        blocked_at DATE
+    );
+"#;

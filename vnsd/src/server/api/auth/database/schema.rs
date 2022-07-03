@@ -26,3 +26,11 @@ table! {
         value -> Text,
     }
 }
+table! {
+    use diesel::sql_types::{Text,Date,Integer};
+    block_list (id) {
+        id -> Integer,
+        ip_addr -> Text,
+        blocked_at -> Date,
+    }
+}

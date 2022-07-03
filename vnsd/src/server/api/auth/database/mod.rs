@@ -59,7 +59,13 @@ impl InitDatabase {
             Info::setup(&self.conn);
         }
 
-        for q in [CREATE_KEYS_QUERY, CREATE_CONNECTIONS_QUERY].iter() {
+        for q in [
+            CREATE_KEYS_QUERY,
+            CREATE_CONNECTIONS_QUERY,
+            CREATE_BLOCK_LIST_QUERY,
+        ]
+        .iter()
+        {
             if let Err(e) = sql_query(*q).execute(&self.conn) {
                 return Err(anyhow!(e));
             }

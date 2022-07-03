@@ -1,4 +1,4 @@
-use super::schema::*;
+use super::{schema::*, InitDatabase};
 use anyhow::{anyhow, Result};
 use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use uuid::Uuid;
@@ -23,6 +23,7 @@ pub trait Statements {
     type Args;
     type SelectOutput;
     type FindOutput;
+
     fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
     where
         F: Fn(Self::Args) -> bool;
@@ -224,6 +225,74 @@ impl Statements for Keys {
         F: Fn(Self::Args) -> bool,
     {
         keys::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .find(|e| f(e.clone().into()))
+    }
+}
+
+#[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
+#[table_name = "block_list"]
+pub struct BlockList {
+    id: i32,
+    ip_addr: String,
+    blocked_at: String,
+}
+
+impl BlockList {
+    pub fn new(conn: &SqliteConnection, ip_addr: &str) -> Self {
+        let last_id = match block_list::table.load::<Self>(conn) {
+            Err(_) => 0,
+            Ok(keys) => match keys.last() {
+                Some(key) => key.id,
+                None => 0,
+            },
+        };
+        Self {
+            id: last_id + 1,
+            ip_addr: ip_addr.to_owned(),
+            blocked_at: Local::now().to_rfc2822(),
+        }
+    }
+
+    pub fn is_blocked(conn: &SqliteConnection, ip_addr: &str) -> bool {
+        Self::find(conn, |item| item.ip_addr == ip_addr).is_some()
+    }
+}
+
+impl Create for BlockList {
+    type Output = Self;
+
+    fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
+        if let Err(e) = insert_into(block_list::table).values(self).execute(conn) {
+            return Err(anyhow!(e));
+        }
+        Ok(self.clone())
+    }
+}
+
+impl Statements for BlockList {
+    type Args = Self;
+    type SelectOutput = Vec<Self>;
+    type FindOutput = Option<Self>;
+    fn select<F>(conn: &SqliteConnection, f: F) -> Self::SelectOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        block_list::table
+            .load::<Self>(conn)
+            .unwrap()
+            .into_iter()
+            .filter(|e| f(e.clone().into()))
+            .collect::<Self::SelectOutput>()
+    }
+
+    fn find<F>(conn: &SqliteConnection, f: F) -> Self::FindOutput
+    where
+        F: Fn(Self::Args) -> bool,
+    {
+        block_list::table
             .load::<Self>(conn)
             .unwrap()
             .into_iter()
