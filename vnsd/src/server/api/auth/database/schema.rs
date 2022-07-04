@@ -28,7 +28,7 @@ table! {
 }
 table! {
     use diesel::sql_types::{Text,Date,Integer};
-    block_list (id) {
+    block_list {
         id -> Integer,
         ip_addr -> Text,
         blocked_at -> Date,

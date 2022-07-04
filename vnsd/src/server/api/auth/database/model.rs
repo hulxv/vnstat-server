@@ -1,6 +1,10 @@
-use super::schema::*;
+// TODO: refactoring this file
+
+use super::*;
 use anyhow::{anyhow, Result};
-use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
+use diesel::{
+    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
+};
 use uuid::Uuid;
 
 use app::Configs;
@@ -232,6 +236,32 @@ impl Statements for Keys {
     }
 }
 
+pub struct BlockError {
+    pub kind: BlockErrorKinds,
+    pub details: String,
+}
+
+impl BlockError {
+    pub fn new(kind: BlockErrorKinds, details: &str) -> Self {
+        Self {
+            kind,
+            details: details.to_owned(),
+        }
+    }
+}
+
+impl std::fmt::Display for BlockError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+// TODO: add error for invalid ip addresss pattern
+pub enum BlockErrorKinds {
+    AlreadyBlocked,
+    AlreadyUnBlocked,
+}
+
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
 #[table_name = "block_list"]
 pub struct BlockList {
@@ -242,6 +272,7 @@ pub struct BlockList {
 
 impl BlockList {
     pub fn new(conn: &SqliteConnection, ip_addr: &str) -> Self {
+        // TODO: check from validate ip address pattern
         let last_id = match block_list::table.load::<Self>(conn) {
             Err(_) => 0,
             Ok(keys) => match keys.last() {
@@ -256,6 +287,29 @@ impl BlockList {
         }
     }
 
+    pub fn block(conn: &SqliteConnection, ip_addr: &str) -> Result<(), BlockError> {
+        if Self::find(conn, |l| l.ip_addr == ip_addr).is_some() {
+            return Err(BlockError::new(
+                BlockErrorKinds::AlreadyBlocked,
+                &format!("{ip_addr} already blocked"),
+            ));
+        }
+        Self::new(conn, ip_addr).create(conn).unwrap();
+        Ok(())
+    }
+    pub fn unblock(conn: &SqliteConnection, addr: &str) -> Result<(), BlockError> {
+        use super::schema::block_list::dsl::*;
+        if Self::find(conn, |l| l.ip_addr == addr).is_none() {
+            return Err(BlockError::new(
+                BlockErrorKinds::AlreadyUnBlocked,
+                &format!("{addr} already un-blocked"),
+            ));
+        }
+        diesel::delete(block_list.filter(ip_addr.eq_all(addr)))
+            .execute(conn)
+            .unwrap();
+        Ok(())
+    }
     pub fn is_blocked(conn: &SqliteConnection, ip_addr: &str) -> bool {
         Self::find(conn, |item| item.ip_addr == ip_addr).is_some()
     }

@@ -1,3 +1,5 @@
+// TODO: refactoring communication between server and clients
+
 use anyhow::{anyhow, Result};
 use log::warn;
 use serde_derive::{Deserialize, Serialize};
@@ -13,7 +15,7 @@ use tokio::net::{UnixListener, UnixStream};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DaemonRequest<T> {
-   pub command: DaemonCommands,
+    pub command: DaemonCommands,
     pub args: Vec<T>,
 }
 
@@ -32,6 +34,7 @@ pub enum DaemonCommands {
     ResumeServer,
     PauseServer,
     BlockIPs,
+    UnBlockIPs,
 }
 impl FromStr for DaemonCommands {
     type Err = &'static str;
@@ -44,6 +47,7 @@ impl FromStr for DaemonCommands {
             "pause" | "server-pause" => Ok(Self::PauseServer),
             "resume" | "server-resume" => Ok(Self::ResumeServer),
             "block" | "server-block" => Ok(Self::BlockIPs),
+            "unblock" | "server-unblock" => Ok(Self::UnBlockIPs),
             _ => Err("invalid message"),
         }
     }
@@ -58,10 +62,10 @@ impl ToString for DaemonCommands {
             Self::PauseServer => "server-pause",
             Self::ResumeServer => "server-resume",
             Self::StatusServer => "server-status",
-            Self::BlockIPs => "server-block-ips",
+            Self::BlockIPs => "server-block",
+            Self::UnBlockIPs => "server-unblock",
         }
         .to_owned()
-        // )
     }
 }
 

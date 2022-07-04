@@ -36,9 +36,16 @@ pub enum ServerCommands {
 
     #[clap(value_parser)]
     Resume,
-    /// To block specific ip address from connect with the server
+    ///  Block specific ip address to disallow using HTTP server
     #[clap(value_parser)]
     Block {
+        #[clap(required = true, value_parser)]
+        addresses: Vec<String>,
+    },
+
+    ///  un-Block specific ip address that was blocked and allow using HTTP server again
+    #[clap(value_parser)]
+    UnBlock {
         #[clap(required = true, value_parser)]
         addresses: Vec<String>,
     },
@@ -54,6 +61,7 @@ impl Display for ServerCommands {
             ServerCommands::Pause => write!(f, "pause"),
             ServerCommands::Resume => write!(f, "resume"),
             ServerCommands::Block { .. } => write!(f, "block"),
+            ServerCommands::UnBlock { .. } => write!(f, "unblock"),
         }
     }
 }

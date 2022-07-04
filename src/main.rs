@@ -7,10 +7,7 @@ use tokio::{select, time};
 
 use app::log::Logger;
 use utils::unix_socket::{DaemonCommands, DaemonRequest, UnixSocket};
-use vns::cli::{
-    Args, Commands,
-    ServerCommands::{Block, Pause, Resume, Shutdown, Status},
-};
+use vns::cli::{Args, Commands, ServerCommands::*};
 
 const TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER: u64 = 6000; // By Milliseconds
 use serde_json::json;
@@ -29,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let message = DaemonRequest::new(
                 DaemonCommands::from_str(&command.to_string()).unwrap(),
                 match command.clone() {
-                    Block { addresses } => addresses,
+                    Block { addresses } | UnBlock { addresses } => addresses,
                     _ => vec![],
                 },
             );
@@ -37,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match socket.send(&format!("{}", json!(message))).await {
                 Err(e) => error!("Couldn't send to unix stream: {e}"),
                 Ok(_) => match command {
-                    Resume | Pause | Shutdown | Block { .. } => {
+                    Resume | Pause | Shutdown | Block { .. } | UnBlock { .. } => {
                         if command == Shutdown {
                             warn!("Shutdown server gracefully, you will need to restart vns daemon to re-running http server");
                         }
@@ -46,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 match socket.receive().await {
                                     Err(e) => error!("Cannot recieve response from unix server: {e}"),
                                     Ok(message) => {
+                                        println!("{message}");
                                         let hash: HashMap<String, String> = serde_json::from_str(message.as_str()).unwrap();
                                         println!("{}: {}",
                                             match hash.get("status").unwrap().to_lowercase().as_str(){

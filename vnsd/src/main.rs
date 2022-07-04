@@ -35,7 +35,6 @@ async fn main() -> Result<(), std::io::Error> {
             .is_ok()
             .then(|| std::process::exit(0));
     });
-
     let _: (_, Result<(), anyhow::Error>) = tokio::join!(
         // Running HTTP server
         async {
@@ -51,7 +50,8 @@ async fn main() -> Result<(), std::io::Error> {
         },
         // Listening to UNIX socket commands
         async {
-            loop {
+            // TODO: refactoring handling UNIX connections
+            'outer: loop {
                 match listener.receive().await {
                     Ok(message) => {
                         if let Ok(message) = serde_json::from_str::<DaemonRequest<String>>(&message)
@@ -170,15 +170,59 @@ async fn main() -> Result<(), std::io::Error> {
                                     let db = InitDatabase::connect().unwrap();
                                     db.init().unwrap();
                                     for addr in message.args.iter() {
-                                        BlockList::new(db.conn(), addr)
-                                            .create(db.conn())
-                                            .is_ok()
-                                            .then(|| info!("{addr} has been blocked"));
+                                        match BlockList::block(db.conn(), addr) {
+                                            Ok(_) => info!("{addr} has been blocked"),
+                                            Err(e) => {
+                                                error!("Cannot block {addr}: {e}");
+                                                if let Err(e) = listener
+                                                    .send(
+                                                        ServerMessage::failed(&e.details).as_str(),
+                                                    )
+                                                    .await
+                                                {
+                                                    error!("Couldn't send to unix stream: {e}");
+                                                }
+                                                continue 'outer;
+                                            }
+                                        }
                                     }
 
                                     if let Err(e) = listener
                                         .send(
                                             ServerMessage::success("Blocking was success").as_str(),
+                                        )
+                                        .await
+                                    {
+                                        error!("Couldn't send to unix stream: {e}");
+                                    }
+                                }
+                                UnBlockIPs => {
+                                    let db = InitDatabase::connect().unwrap();
+                                    db.init().unwrap();
+                                    for addr in message.args.iter() {
+                                        match BlockList::unblock(db.conn(), addr) {
+                                            Ok(_) => info!("{addr} has been unblocked"),
+                                            Err(e) => {
+                                                error!("Cannot unblock {addr}: {e}");
+                                                if let Err(e) = listener
+                                                    .send(
+                                                        ServerMessage::failed(&e.details).as_str(),
+                                                    )
+                                                    .await
+                                                {
+                                                    error!("Couldn't send to unix stream: {e}");
+                                                }
+                                                continue 'outer;
+                                            }
+                                        }
+                                    }
+
+                                    if let Err(e) = listener
+                                        .send(
+                                            ServerMessage::success(
+                                                "Addresses unblocked successfully",
+                                            )
+                                            .as_str(),
                                         )
                                         .await
                                     {
