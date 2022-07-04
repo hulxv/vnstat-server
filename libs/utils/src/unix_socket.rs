@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use log::warn;
+use serde_derive::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{remove_file, set_permissions, Permissions},
@@ -10,15 +11,29 @@ use std::{
 };
 use tokio::net::{UnixListener, UnixStream};
 
-pub enum Message {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DaemonRequest<T> {
+   pub command: DaemonCommands,
+    pub args: Vec<T>,
+}
+
+impl<T> DaemonRequest<T> {
+    pub fn new(command: DaemonCommands, args: Vec<T>) -> Self {
+        Self { command, args }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DaemonCommands {
     ShutdownServer,
     RunServer,
     RestartServer,
     StatusServer,
     ResumeServer,
     PauseServer,
+    BlockIPs,
 }
-impl FromStr for Message {
+impl FromStr for DaemonCommands {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
@@ -28,12 +43,13 @@ impl FromStr for Message {
             "status" | "server-status" => Ok(Self::StatusServer),
             "pause" | "server-pause" => Ok(Self::PauseServer),
             "resume" | "server-resume" => Ok(Self::ResumeServer),
+            "block" | "server-block" => Ok(Self::BlockIPs),
             _ => Err("invalid message"),
         }
     }
 }
 
-impl ToString for Message {
+impl ToString for DaemonCommands {
     fn to_string(&self) -> String {
         match self {
             Self::ShutdownServer => "server-shutdown",
@@ -42,6 +58,7 @@ impl ToString for Message {
             Self::PauseServer => "server-pause",
             Self::ResumeServer => "server-resume",
             Self::StatusServer => "server-status",
+            Self::BlockIPs => "server-block-ips",
         }
         .to_owned()
         // )

@@ -1,14 +1,13 @@
-use std::str::FromStr;
-
 use app::Logger;
 use log::{error, info, warn};
+use serde_json;
 
 use tokio::{self, spawn};
-use utils::unix_socket::{
-    Message::{self, *},
-    ServerMessage, UnixSocket,
+use utils::unix_socket::{DaemonCommands::*, DaemonRequest, ServerMessage, UnixSocket};
+use vnsd::server::{
+    api::auth::database::{BlockList, Create, InitDatabase},
+    Server,
 };
-use vnsd::server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -38,6 +37,7 @@ async fn main() -> Result<(), std::io::Error> {
     });
 
     let _: (_, Result<(), anyhow::Error>) = tokio::join!(
+        // Running HTTP server
         async {
             let (ip, port) = server.address();
 
@@ -49,14 +49,14 @@ async fn main() -> Result<(), std::io::Error> {
                 .is_err()
                 .then(|| warn!("Server has been disconnected"));
         },
+        // Listening to UNIX socket commands
         async {
             loop {
                 match listener.receive().await {
                     Ok(message) => {
-                        if let Ok(message) =
-                            Message::from_str(message.as_str()).map_err(|err| error!("{err}"))
+                        if let Ok(message) = serde_json::from_str::<DaemonRequest<String>>(&message)
                         {
-                            match message {
+                            match message.command {
                                 PauseServer => {
                                     warn!("Pause server...",);
 
@@ -163,6 +163,26 @@ async fn main() -> Result<(), std::io::Error> {
                                         {
                                             error!("Couldn't send to unix stream: {e}");
                                         }
+                                    }
+                                }
+                                BlockIPs => {
+                                    info!("block {:?}", message.args);
+                                    let db = InitDatabase::connect().unwrap();
+                                    db.init().unwrap();
+                                    for addr in message.args.iter() {
+                                        BlockList::new(db.conn(), addr)
+                                            .create(db.conn())
+                                            .is_ok()
+                                            .then(|| info!("{addr} has been blocked"));
+                                    }
+
+                                    if let Err(e) = listener
+                                        .send(
+                                            ServerMessage::success("Blocking was success").as_str(),
+                                        )
+                                        .await
+                                    {
+                                        error!("Couldn't send to unix stream: {e}");
                                     }
                                 }
                                 _ => (),

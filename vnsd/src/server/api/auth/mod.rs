@@ -10,7 +10,7 @@ use actix_web_httpauth::extractors::{
     AuthenticationError,
 };
 use app::Configs;
-use database::{Connections, Create, InitDatabase, Keys, Statements};
+use database::{BlockList, Connections, Create, InitDatabase, Keys, Statements};
 use log::*;
 use serde_derive::Serialize;
 
@@ -39,6 +39,7 @@ impl Key {
 
 pub enum AuthErrors {
     IncorrectPassword,
+    IpAddressWasBlocked,
 }
 
 impl AuthErrors {
@@ -46,6 +47,7 @@ impl AuthErrors {
         use AuthErrors::*;
         match self {
             IncorrectPassword => "Password is incorrect",
+            IpAddressWasBlocked => "IP address was bloced from system",
         }
         .to_string()
     }
@@ -61,6 +63,18 @@ impl Auth {
         let db = InitDatabase::connect().unwrap();
         db.init().unwrap();
 
+        let config = req
+            .app_data::<Config>()
+            .map(|data| data.clone())
+            .unwrap_or_else(Default::default);
+
+        if BlockList::is_blocked(
+            db.conn(),
+            req.connection_info().realip_remote_addr().unwrap(),
+        ) {
+            return Err(AuthenticationError::from(config).into());
+        }
+
         match Keys::is_valid(db.conn(), credentials.token()) {
             true => Ok(req),
             _ => {
@@ -74,10 +88,6 @@ impl Auth {
                         _ => credentials.token().to_owned()
                     }
                 );
-                let config = req
-                    .app_data::<Config>()
-                    .map(|data| data.clone())
-                    .unwrap_or_else(Default::default);
                 Err(AuthenticationError::from(config).into())
             }
         }
@@ -91,6 +101,10 @@ impl Auth {
         if Configs::init().unwrap().auth().password().eq(password) {
             let db = InitDatabase::connect().unwrap();
             db.init().map_err(|e| error!("{e}")).unwrap();
+
+            if BlockList::is_blocked(db.conn(), ip_addr) {
+                return Err(AuthErrors::IpAddressWasBlocked);
+            }
 
             let conn = match Connections::find(db.conn(), |c| {
                 c.ip_addr() == ip_addr && c.user_agent() == user_agent

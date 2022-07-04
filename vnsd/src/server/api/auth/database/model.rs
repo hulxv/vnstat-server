@@ -1,4 +1,4 @@
-use super::{schema::*, InitDatabase};
+use super::schema::*;
 use anyhow::{anyhow, Result};
 use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use uuid::Uuid;

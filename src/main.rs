@@ -6,13 +6,14 @@ use log::{error, warn};
 use tokio::{select, time};
 
 use app::log::Logger;
-use utils::unix_socket::{Message, UnixSocket};
+use utils::unix_socket::{DaemonCommands, DaemonRequest, UnixSocket};
 use vns::cli::{
     Args, Commands,
-    ServerCommands::{Pause, Resume, Shutdown, Status},
+    ServerCommands::{Block, Pause, Resume, Shutdown, Status},
 };
 
 const TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER: u64 = 6000; // By Milliseconds
+use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,18 +26,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .map_err(|e| error!("{e}"))
                 .unwrap();
-            match socket
-                .send(
-                    Message::from_str(format!("{command}").as_str())
-                        .unwrap()
-                        .to_string()
-                        .as_str(),
-                )
-                .await
-            {
+            let message = DaemonRequest::new(
+                DaemonCommands::from_str(&command.to_string()).unwrap(),
+                match command.clone() {
+                    Block { addresses } => addresses,
+                    _ => vec![],
+                },
+            );
+
+            match socket.send(&format!("{}", json!(message))).await {
                 Err(e) => error!("Couldn't send to unix stream: {e}"),
                 Ok(_) => match command {
-                    Resume | Pause | Shutdown => {
+                    Resume | Pause | Shutdown | Block { .. } => {
                         if command == Shutdown {
                             warn!("Shutdown server gracefully, you will need to restart vns daemon to re-running http server");
                         }
