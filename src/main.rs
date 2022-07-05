@@ -8,7 +8,10 @@ use tokio::{select, time};
 use utils::unix_socket::{
     Commands as UnixSocketCommands, Request, Response, ServerResponseStatus, UnixSocket,
 };
-use vns::cli::{Args, Commands, ServerCommands::*};
+use vns::cli::{
+    Args, Commands,
+    ServerCommands::{self, *},
+};
 
 const TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER: u64 = 6000; // By Milliseconds
 use serde_json::json;
@@ -34,111 +37,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             match socket.send(&format!("{}", json!(message))).await {
                 Err(e) => error!("Couldn't send to unix stream: {e}"),
-                Ok(_) => match command {
-                    Resume | Pause | Shutdown | Block { .. } | UnBlock { .. } => {
-                        if command == Shutdown {
-                            warn!("Shutdown server gracefully, you will need to restart vns daemon to re-running http server");
-                        }
-                        select!(
-                            _ = async {
-                                match socket.receive().await {
-                                    Err(e) => error!("Cannot recieve response from unix server: {e}"),
-                                    Ok(res) => {
-                                        let res: Response = serde_json::from_str(&res).unwrap();
-
-                                        for message in res.messages.iter() {
-                                                println!("[{}] {}",
-                                                match message.status {
-                                                    ServerResponseStatus::Failed => "Failed".red().bold(),
-                                                    ServerResponseStatus::Success => "Success".green().bold(),
-                                                },
-                                                message.body.bold()
-                                            );
-                                        }
-                                    }
-                                }
-                            } => {}
-                            _ = async {
-                                time::sleep(Duration::from_millis(TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER)).await;
-                            } => {
-                                error!("No response from unix server: connection timeout.")
-                            }
-                        );
+                Ok(_) => {
+                    if command == Shutdown {
+                        warn!("Shutdown server gracefully, you will need to restart vns daemon to re-running http server");
                     }
-                    Status => select!(_ = async{
+                    select!(
+                        _ = async {
                             match socket.receive().await {
-                                Err(e) => error!("Cannot recieve response from unix stream: {e}"),
+                                Err(e) => error!("Cannot recieve response from unix server: {e}"),
                                 Ok(res) => {
                                     let res = serde_json::from_str::<Response>(&res).unwrap();
-                                    let hash:  HashMap<String,String> =
-                                        serde_json::from_str(&res.messages[0].body).unwrap();
-
-                                    let (ip, port) =
-                                        (hash.get("ip").unwrap(), hash.get("port").unwrap());
-
-                                    match hash.get("status").unwrap().to_lowercase().as_str() {
-                                        "active" => {
-                                            println!(
-                                                "{} ({}) {}:",
-                                                "Active".green().bold(),
-                                                "Running".yellow().bold(),
-                                                "on".bold(),
-                                            );
-                                            println!(
-                                                "{: >1}  {}",
-                                                "",
-                                                format!("{:<5} {}", "IP", ip.yellow(),).bold()
-                                            );
-                                            println!(
-                                                "{: >1}  {}",
-                                                "",
-                                                format!("{:<5} {}", "PORT", port.yellow()).bold()
-                                            );
-                                        }
-                                        "idle" => {
-                                            println!(
-                                                "{} ({})",
-                                                "Idle".cyan().bold(),
-                                                "Paused".blue().bold(),
-                                            );
-
-                                            println!(
-                                                "\n{} ",
-                                                format!(
-                                                    "{}\n {} \n{}:  \n $ {}",
-                                                    "Note".bright_blue(),
-                                                    "To resume incoming connections",
-                                                    "run".yellow(),
-                                                    "vns server resume",
-                                                )
-                                                .bold()
-                                            )
-                                        }
-                                        "inactive" => {
-                                            println!(
-                                                "{} ({})",
-                                                "Inactive".yellow().bold(),
-                                                "STOPPED".red().bold(),
-                                            );
-                                            println!(
-                                                "\n{}\n {}",
-                                                "Note".bright_blue().bold(),
-                                                format!(
-                                                    "Restart {} to re-running the server.",
-                                                    "vns daemon".yellow(),
-                                                )
-                                            )
-                                        }
-                                        _ => (),
-                                    };
+                                    handle_response(command, res);
                                 }
                             }
-                        } => {},
-                    _ = async{
+                        } => {}
+                        _ = async {
                             time::sleep(Duration::from_millis(TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER)).await;
-                        } => error!("No response from unix server: connection timeout")
-                    ),
-                },
+                        } => {
+                            error!("No response from unix server: connection timeout.")
+                        }
+                    );
+                }
             };
         }
         None => {
@@ -147,4 +66,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn handle_response(command: ServerCommands, res: Response) {
+    match command {
+        Status => {
+            let hash: HashMap<String, String> =
+                serde_json::from_str(&res.messages[0].body).unwrap();
+
+            let (ip, port) = (hash.get("ip").unwrap(), hash.get("port").unwrap());
+
+            match hash.get("status").unwrap().to_lowercase().as_str() {
+                "active" => {
+                    println!(
+                        "{} ({}) {}:",
+                        "Active".green().bold(),
+                        "Running".yellow().bold(),
+                        "on".bold(),
+                    );
+                    println!(
+                        "{: >1}  {}",
+                        "",
+                        format!("{:<5} {}", "IP", ip.yellow(),).bold()
+                    );
+                    println!(
+                        "{: >1}  {}",
+                        "",
+                        format!("{:<5} {}", "PORT", port.yellow()).bold()
+                    );
+                }
+                "idle" => {
+                    println!("{} ({})", "Idle".cyan().bold(), "Paused".blue().bold(),);
+
+                    println!(
+                        "\n{} ",
+                        format!(
+                            "{}\n {} \n{}:  \n $ {}",
+                            "Note".bright_blue(),
+                            "To resume incoming connections",
+                            "run".yellow(),
+                            "vns server resume",
+                        )
+                        .bold()
+                    )
+                }
+                "inactive" => {
+                    println!(
+                        "{} ({})",
+                        "Inactive".yellow().bold(),
+                        "STOPPED".red().bold(),
+                    );
+                    println!(
+                        "\n{}\n {}",
+                        "Note".bright_blue().bold(),
+                        format!(
+                            "Restart {} to re-running the server.",
+                            "vns daemon".yellow(),
+                        )
+                    )
+                }
+                _ => (),
+            }
+        }
+        _ => {
+            for message in res.messages.iter() {
+                println!(
+                    "[{}] {}",
+                    match message.status {
+                        ServerResponseStatus::Failed => "Failed".red().bold(),
+                        ServerResponseStatus::Success => "Success".green().bold(),
+                    },
+                    message.body.bold()
+                );
+            }
+        }
+    };
 }
