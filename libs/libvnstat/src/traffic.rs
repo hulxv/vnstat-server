@@ -16,13 +16,9 @@ impl VnStatTraffic {
         if !self.interval.clone().is_validated() {
             return Err(anyhow!(Error::new(InvalidInput, "invalid interval")));
         }
-        match VnStatDatabase::default()?
+        Ok(VnStatDatabase::default()?
             .connect()?
-            .select_table::<TrafficModel>(self.interval.get())
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(result) => Ok(result),
-        }
+            .select_table::<TrafficModel>(self.interval.get())?)
     }
 }
 

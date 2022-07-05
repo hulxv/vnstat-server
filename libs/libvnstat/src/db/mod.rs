@@ -53,13 +53,8 @@ impl VnStatDatabase {
     }
 
     pub fn connect(&mut self) -> Result<&mut Self> {
-        match SqliteConnection::establish(self.path.as_str()) {
-            Err(err) => Err(anyhow!(err)),
-            Ok(conn) => {
-                self.conn = Some(conn);
-                Ok(self)
-            }
-        }
+        self.conn = Some(SqliteConnection::establish(self.path.as_str())?);
+        Ok(self)
     }
 
     pub fn select_table<T>(&mut self, table: &str) -> Result<Vec<T>>
@@ -67,15 +62,11 @@ impl VnStatDatabase {
         T: diesel::deserialize::QueryableByName<diesel::sqlite::Sqlite>,
     {
         match self.conn.is_some() {
-            true => match sql_query(format!("SELECT * from {}", table))
-                .load(&*self.conn.as_ref().unwrap())
-            {
-                Err(err) => Err(anyhow!(err)),
-                Ok(result) => Ok(result),
-            },
+            true => Ok(sql_query(format!("SELECT * from {}", table))
+                .load(&*self.conn.as_ref().unwrap())?),
             false => Err(anyhow!(Error::new(
                 Interrupted,
-                "VnStatDatabase wasn't connected",
+                "vnStat Database wasn't connected",
             ))),
         }
     }
@@ -129,7 +120,6 @@ mod tests {
 
     #[test]
     fn database_connection_with_default_path() {
-
         assert!(VnStatDatabase::default().is_ok())
     }
 

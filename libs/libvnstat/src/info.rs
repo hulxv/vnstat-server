@@ -4,13 +4,9 @@ pub struct VnStatInfo;
 
 impl VnStatInfo {
     pub fn get(&self) -> Result<Vec<Info>> {
-        match VnStatDatabase::default()?
+        Ok(VnStatDatabase::default()?
             .connect()?
-            .select_table::<Info>("info")
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(result) => Ok(result),
-        }
+            .select_table::<Info>("info")?)
     }
 }
 

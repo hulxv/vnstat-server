@@ -52,6 +52,7 @@ impl Configs {
 
     pub fn init() -> Result<Self> {
         let path = Self::get_file_path()?;
+        println!("{path}");
         let _ = match File::new(path.clone()).exists() {
             false => File::new(path.clone()).create(Self::default().to_string()?),
             _ => Ok(()),
@@ -64,21 +65,13 @@ impl Configs {
 
     pub fn reset() -> Result<()> {
         let path = Self::get_file_path()?;
-        match fs::remove_file(&path) {
-            Err(err) => return Err(anyhow!(err)),
-            _ => (),
-        };
-        match File::new(path.clone()).create(Self::default().to_string()?) {
-            Err(err) => return Err(anyhow!(err)),
-            Ok(_) => Ok(()),
-        }
+        fs::remove_file(&path)?;
+        File::new(path.clone()).create(Self::default().to_string()?)?;
+        Ok(())
     }
 
     pub fn to_string(&self) -> Result<String> {
-        match toml::to_string(self) {
-            Ok(r) => Ok(r),
-            Err(e) => Err(anyhow!(e)),
-        }
+        Ok(toml::to_string(self)?)
     }
 
     /// Convert 'query' to keys to get 'toml::value::Value'

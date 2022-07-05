@@ -16,10 +16,8 @@ impl File {
             false => std::fs::create_dir_all(path.parent().unwrap())?,
             _ => (),
         };
-        match fsFile::create(path)?.write_all(content.as_bytes()) {
-            Err(err) => Err(anyhow!(err)),
-            Ok(_) => Ok(()),
-        }
+        fsFile::create(path)?.write_all(content.as_bytes())?;
+        Ok(())
     }
     pub fn exists(&self) -> bool {
         Path::new(Path::new(&self.path)).exists()

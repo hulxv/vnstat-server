@@ -4,13 +4,9 @@ pub struct VnStatInterface;
 
 impl VnStatInterface {
     pub fn get(&self) -> Result<Vec<Interface>> {
-        match VnStatDatabase::default()?
+        Ok(VnStatDatabase::default()?
             .connect()?
-            .select_table::<Interface>("interface")
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(result) => Ok(result),
-        }
+            .select_table::<Interface>("interface")?)
     }
 }
 

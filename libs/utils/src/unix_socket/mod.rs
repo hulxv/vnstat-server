@@ -36,17 +36,11 @@ impl UnixSocket {
             };
         }
 
-        let sock: UnixSocket;
-        match UnixListener::bind(path) {
-            Err(e) => return Err(anyhow!(e)),
-            Ok(listener) => {
-                sock = Self {
-                    listener: Some(listener),
-                    stream: None,
-                    side: UnixSocketSide::Server,
-                }
-            }
-        }
+        let sock = Self {
+            listener: Some(UnixListener::bind(path)?),
+            stream: None,
+            side: UnixSocketSide::Server,
+        };
         set_permissions(path, Permissions::from_mode(0o666))?;
         Ok(sock)
     }
@@ -61,7 +55,7 @@ impl UnixSocket {
     }
 
     /// Handling socket connections before receive messages
-    pub async fn accept(&mut self) -> Result<&mut Self> {
+    pub async fn streaming(&mut self) -> Result<&mut Self> {
         match self.listener.as_ref().unwrap().accept().await {
             Ok((stream, _)) => {
                 self.stream = Some(stream);
@@ -75,17 +69,15 @@ impl UnixSocket {
     pub async fn receive(&mut self) -> Result<String> {
         loop {
             if self.side.eq(&UnixSocketSide::Server) {
-                if let Err(e) = self.accept().await {
-                    return Err(anyhow!(e));
-                }
+                self.streaming().await?;
             }
 
-            self.stream.as_ref().unwrap().readable().await.unwrap();
+            self.stream.as_ref().unwrap().readable().await?;
             let mut buf = vec![0; 1024];
             match self.stream.as_ref().unwrap().try_read(&mut buf) {
                 Ok(n) => {
                     buf.truncate(n);
-                    return Ok(from_utf8(&buf).unwrap().to_owned());
+                    return Ok(from_utf8(&buf)?.to_owned());
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     continue;

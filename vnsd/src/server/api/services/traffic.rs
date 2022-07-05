@@ -1,6 +1,7 @@
 use crate::http::response::{Response, ResponseError, ResponseStatus};
 use actix_web::{get, web, HttpResponse};
 use libvnstat::VnStat;
+use log::error;
 
 #[get("/traffic/{interval}")]
 pub async fn get_traffic(interval: web::Path<String>) -> HttpResponse {
@@ -13,6 +14,7 @@ pub async fn get_traffic(interval: web::Path<String>) -> HttpResponse {
         ),
         Err(err) => {
             if let Some(err) = err.root_cause().downcast_ref::<std::io::Error>() {
+                error!("{err}");
                 if err.kind() == std::io::ErrorKind::InvalidInput {
                     return HttpResponse::NotFound().json(
                         ResponseError::new()

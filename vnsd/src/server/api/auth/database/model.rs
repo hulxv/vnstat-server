@@ -72,9 +72,7 @@ impl Connections {
 impl Create for Connections {
     type Output = Self;
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
-        if let Err(e) = insert_into(connections::table).values(self).execute(conn) {
-            return Err(anyhow!(e));
-        }
+        insert_into(connections::table).values(self).execute(conn)?;
         Ok(self.clone())
     }
 }
@@ -201,9 +199,7 @@ impl std::default::Default for Keys {
 impl Create for Keys {
     type Output = Self;
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
-        if let Err(e) = insert_into(keys::table).values(self).execute(conn) {
-            return Err(anyhow!(e));
-        }
+        insert_into(keys::table).values(self).execute(conn)?;
         Ok(self.clone())
     }
 }
@@ -319,9 +315,7 @@ impl Create for BlockList {
     type Output = Self;
 
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
-        if let Err(e) = insert_into(block_list::table).values(self).execute(conn) {
-            return Err(anyhow!(e));
-        }
+        insert_into(block_list::table).values(self).execute(conn)?;
         Ok(self.clone())
     }
 }
@@ -398,9 +392,7 @@ impl Info {
 impl Create for Info {
     type Output = Self;
     fn create(&self, conn: &SqliteConnection) -> Result<Self::Output> {
-        if let Err(e) = insert_into(info::table).values(self).execute(conn) {
-            return Err(anyhow!(e));
-        }
+        insert_into(info::table).values(self).execute(conn)?;
         Ok(self.clone())
     }
 }

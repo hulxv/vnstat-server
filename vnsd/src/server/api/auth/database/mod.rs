@@ -27,35 +27,32 @@ pub struct InitDatabase {
 /// Initialization of the authentication database, i.e. its creation and creation of its tables
 impl InitDatabase {
     pub fn connect() -> Result<Self> {
-        match SqliteConnection::establish(
-            &DatabaseFile::new()
-                .unwrap()
-                .create_if_not_exists()
-                .unwrap()
-                .path(),
-        ) {
-            Err(err) => Err(anyhow!(err)),
-            Ok(conn) => Ok(Self { conn }),
-        }
+        Ok(Self {
+            conn: SqliteConnection::establish(
+                &DatabaseFile::new()
+                    .unwrap()
+                    .create_if_not_exists()
+                    .unwrap()
+                    .path(),
+            )?,
+        })
     }
 
     pub fn init(&self) -> Result<()> {
-        sql_query(CREATE_INFO_QUERY).execute(&self.conn).unwrap();
+        sql_query(CREATE_INFO_QUERY).execute(&self.conn)?;
 
         Info::setup(&self.conn);
         let db_version = Info::find(&self.conn, |i| i.key() == "db_version")
             .unwrap()
             .value();
 
-        if DATABASE_VERSION > db_version.parse().unwrap() {
+        if DATABASE_VERSION > db_version.parse()? {
             let tables = vec!["connections", "keys", "info"];
 
             for t in tables.iter() {
-                sql_query(&format!("DROP TABLE IF EXISTS {t}"))
-                    .execute(&self.conn)
-                    .unwrap();
+                sql_query(&format!("DROP TABLE IF EXISTS {t}")).execute(&self.conn)?;
             }
-            sql_query(CREATE_INFO_QUERY).execute(&self.conn).unwrap();
+            sql_query(CREATE_INFO_QUERY).execute(&self.conn)?;
             Info::setup(&self.conn);
         }
 
@@ -66,9 +63,7 @@ impl InitDatabase {
         ]
         .iter()
         {
-            if let Err(e) = sql_query(*q).execute(&self.conn) {
-                return Err(anyhow!(e));
-            }
+            sql_query(*q).execute(&self.conn)?;
         }
         Ok(())
     }
@@ -102,9 +97,7 @@ impl DatabaseFile {
 
     pub fn create_if_not_exists(&self) -> Result<&Self> {
         if !Path::new(&self.path).exists() {
-            if let Err(e) = File::create(&self.path) {
-                return Err(anyhow!(e));
-            }
+            File::create(&self.path)?;
         }
         Ok(self)
     }

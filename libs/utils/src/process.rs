@@ -47,37 +47,31 @@ impl Command {
         todo!()
     }
     pub fn exec(&self) -> Result<Child> {
-        match StdCommand::new(self.program.clone())
+        Ok(StdCommand::new(self.program.clone())
             .args(&self.args)
             .stdout(Stdio::piped())
-            .spawn()
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(child) => Ok(child),
-        }
+            .spawn()?)
     }
 }
 
 impl CommandOutput for Command {
     fn stdout(&self) -> Result<String> {
-        match StdCommand::new(self.program.clone())
-            .args(&self.args)
-            .stdout(Stdio::piped())
-            .output()
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(output) => Ok(String::from_utf8(output.stdout)?),
-        }
+        Ok(String::from_utf8(
+            StdCommand::new(self.program.clone())
+                .args(&self.args)
+                .stdout(Stdio::piped())
+                .output()?
+                .stdout,
+        )?)
     }
     fn stderr(&self) -> Result<String> {
-        match StdCommand::new(self.program.clone())
-            .args(&self.args)
-            .stdout(Stdio::piped())
-            .output()
-        {
-            Err(err) => Err(anyhow!(err)),
-            Ok(output) => Ok(String::from_utf8(output.stderr)?),
-        }
+        Ok(String::from_utf8(
+            StdCommand::new(self.program.clone())
+                .args(&self.args)
+                .stdout(Stdio::piped())
+                .output()?
+                .stderr,
+        )?)
     }
 }
 
