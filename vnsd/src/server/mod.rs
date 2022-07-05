@@ -79,7 +79,7 @@ impl ErrorTrait for ServerHandlingErrorKind {
 }
 
 type ActixServerRunner = Arc<Mutex<Pin<Box<ActixServer>>>>;
-
+#[derive(Clone)]
 pub struct Server {
     addr: ServerAddr,
     runner: ActixServerRunner,

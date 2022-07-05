@@ -1,19 +1,19 @@
 use serde_derive::{Deserialize, Serialize};
 use std::{str::FromStr, string::ToString};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Request<T> {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Request {
     pub command: Commands,
-    pub args: Vec<T>,
+    pub args: Vec<String>,
 }
 
-impl<T> Request<T> {
-    pub fn new(command: Commands, args: Vec<T>) -> Self {
+impl Request {
+    pub fn new(command: Commands, args: Vec<String>) -> Self {
         Self { command, args }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Response {
     pub messages: Vec<ServerResponseMessage>,
 }
@@ -33,7 +33,7 @@ impl Response {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Commands {
     ShutdownServer,
     RunServer,
@@ -44,6 +44,7 @@ pub enum Commands {
     BlockIPs,
     UnBlockIPs,
 }
+
 impl FromStr for Commands {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -77,7 +78,7 @@ impl ToString for Commands {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerResponseStatus {
     Success,
     Failed,
@@ -91,7 +92,7 @@ impl ToString for ServerResponseStatus {
         .to_owned()
     }
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerResponseMessage {
     pub status: ServerResponseStatus,
     pub body: String,

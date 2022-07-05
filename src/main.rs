@@ -45,7 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     Err(e) => error!("Cannot recieve response from unix server: {e}"),
                                     Ok(res) => {
                                         let res: Response = serde_json::from_str(&res).unwrap();
-                                        println!("{res:#?}");
 
                                         for message in res.messages.iter() {
                                                 println!("[{}] {}",

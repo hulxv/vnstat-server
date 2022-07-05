@@ -287,7 +287,7 @@ impl BlockList {
         if Self::find(conn, |l| l.ip_addr == ip_addr).is_some() {
             return Err(BlockError::new(
                 BlockErrorKinds::AlreadyBlocked,
-                &format!("{ip_addr} already blocked"),
+                &format!("already blocked"),
             ));
         }
         Self::new(conn, ip_addr).create(conn).unwrap();
@@ -298,7 +298,7 @@ impl BlockList {
         if Self::find(conn, |l| l.ip_addr == addr).is_none() {
             return Err(BlockError::new(
                 BlockErrorKinds::AlreadyUnBlocked,
-                &format!("{addr} already un-blocked"),
+                &format!("already un-blocked"),
             ));
         }
         diesel::delete(block_list.filter(ip_addr.eq_all(addr)))
