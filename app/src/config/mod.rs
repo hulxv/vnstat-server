@@ -52,7 +52,6 @@ impl Configs {
 
     pub fn init() -> Result<Self> {
         let path = Self::get_file_path()?;
-        println!("{path}");
         let _ = match File::new(path.clone()).exists() {
             false => File::new(path.clone()).create(Self::default().to_string()?),
             _ => Ok(()),
@@ -113,16 +112,21 @@ impl Configs {
     }
 
     pub fn get_file_path() -> Result<String> {
-        let config_dir = match dirs::config_dir() {
-            Some(path) => path.into_os_string().into_string(),
-            None => {
-                return Err(anyhow!(Error::new(
-                    NotFound,
-                    "Can't find \"~/.config\" directory".to_owned(),
-                )))
-            }
-        };
-        Ok([config_dir.unwrap(), "/vns/vns.config.toml".to_owned()].concat())
+        let config_dir: String;
+        if std::env::var("SUDO_USER").is_ok() {
+            config_dir = "/etc".to_owned();
+        } else {
+            config_dir = match dirs::config_dir() {
+                Some(path) => path.into_os_string().into_string().unwrap(),
+                None => {
+                    return Err(anyhow!(Error::new(
+                        NotFound,
+                        "Can't find \"~/.config\" directory".to_owned(),
+                    )))
+                }
+            };
+        }
+        Ok([config_dir, "/vns/vns.conf.toml".to_owned()].concat())
     }
 
     pub fn vnstat(&self) -> VnstatConfigs {
