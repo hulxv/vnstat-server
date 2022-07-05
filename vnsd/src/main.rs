@@ -1,4 +1,4 @@
-use app::Logger;
+use app::{Configs, Logger};
 use log::{error, info, warn};
 use serde_json;
 use std::collections::HashMap;
@@ -6,13 +6,21 @@ use std::collections::HashMap;
 use tokio::{self, spawn};
 use utils::unix_socket::{Commands::*, Request, Response, ServerResponseMessage, UnixSocket};
 use vnsd::server::{
-    api::auth::database::{BlockList, Create, InitDatabase},
+    api::auth::database::{BlockList, InitDatabase},
     Server,
 };
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() -> std::process::ExitCode {
     Logger::init();
+
+    match Configs::get_file_path() {
+        Ok(path) => info!("configuration file located in: {path}",),
+        Err(err) => {
+            error!("Cannot locate configuration file: {err}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
 
     let sock_path = "/tmp/vnsd.sock";
     let mut listener = match UnixSocket::bind(sock_path) {
@@ -174,5 +182,5 @@ async fn main() -> Result<(), std::io::Error> {
             }
         }
     );
-    Ok(())
+    std::process::ExitCode::SUCCESS
 }
