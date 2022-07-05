@@ -1,73 +1,16 @@
-// TODO: refactoring communication between server and clients
+mod communication;
+
+pub use communication::*;
 
 use anyhow::{anyhow, Result};
 use log::warn;
-use serde_derive::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     fs::{remove_file, set_permissions, Permissions},
     os::unix::fs::PermissionsExt,
     path::Path,
-    str::{from_utf8, FromStr},
-    string::ToString,
+    str::from_utf8,
 };
 use tokio::net::{UnixListener, UnixStream};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DaemonRequest<T> {
-    pub command: DaemonCommands,
-    pub args: Vec<T>,
-}
-
-impl<T> DaemonRequest<T> {
-    pub fn new(command: DaemonCommands, args: Vec<T>) -> Self {
-        Self { command, args }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum DaemonCommands {
-    ShutdownServer,
-    RunServer,
-    RestartServer,
-    StatusServer,
-    ResumeServer,
-    PauseServer,
-    BlockIPs,
-    UnBlockIPs,
-}
-impl FromStr for DaemonCommands {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "shutdown" | "server-shutdown" => Ok(Self::ShutdownServer),
-            "restart" | "server-restart" => Ok(Self::RestartServer),
-            "run" | "server-run" => Ok(Self::RunServer),
-            "status" | "server-status" => Ok(Self::StatusServer),
-            "pause" | "server-pause" => Ok(Self::PauseServer),
-            "resume" | "server-resume" => Ok(Self::ResumeServer),
-            "block" | "server-block" => Ok(Self::BlockIPs),
-            "unblock" | "server-unblock" => Ok(Self::UnBlockIPs),
-            _ => Err("invalid message"),
-        }
-    }
-}
-
-impl ToString for DaemonCommands {
-    fn to_string(&self) -> String {
-        match self {
-            Self::ShutdownServer => "server-shutdown",
-            Self::RestartServer => "serve-restart",
-            Self::RunServer => "server-run",
-            Self::PauseServer => "server-pause",
-            Self::ResumeServer => "server-resume",
-            Self::StatusServer => "server-status",
-            Self::BlockIPs => "server-block",
-            Self::UnBlockIPs => "server-unblock",
-        }
-        .to_owned()
-    }
-}
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum UnixSocketSide {
@@ -172,31 +115,5 @@ impl UnixSocket {
             }
         }
         Ok(())
-    }
-}
-
-pub struct ServerMessage;
-
-impl ServerMessage {
-    pub fn success(details: &str) -> String {
-        format!(
-            "{:?}",
-            HashMap::from([("status", "success"), ("details", details)])
-        )
-    }
-    pub fn failed(details: &str) -> String {
-        format!(
-            "{:?}",
-            HashMap::from([("status", "failed"), ("details", details)])
-        )
-    }
-
-    pub fn new(data: Vec<(&str, &str)>) -> String {
-        let mut hash = HashMap::new();
-        data.iter().for_each(|(k, v)| {
-            hash.insert(k, v);
-        });
-
-        format!("{:?}", hash)
     }
 }

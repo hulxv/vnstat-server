@@ -1,12 +1,13 @@
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
+use app::log::Logger;
 use clap::Parser;
 use colored::Colorize;
 use log::{error, warn};
 use tokio::{select, time};
-
-use app::log::Logger;
-use utils::unix_socket::{DaemonCommands, DaemonRequest, UnixSocket};
+use utils::unix_socket::{
+    Commands as UnixSocketCommands, Request, Response, ServerResponseStatus, UnixSocket,
+};
 use vns::cli::{Args, Commands, ServerCommands::*};
 
 const TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER: u64 = 6000; // By Milliseconds
@@ -23,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .map_err(|e| error!("{e}"))
                 .unwrap();
-            let message = DaemonRequest::new(
-                DaemonCommands::from_str(&command.to_string()).unwrap(),
+            let message = Request::new(
+                UnixSocketCommands::from_str(&command.to_string()).unwrap(),
                 match command.clone() {
                     Block { addresses } | UnBlock { addresses } => addresses,
                     _ => vec![],
@@ -42,17 +43,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             _ = async {
                                 match socket.receive().await {
                                     Err(e) => error!("Cannot recieve response from unix server: {e}"),
-                                    Ok(message) => {
-                                        println!("{message}");
-                                        let hash: HashMap<String, String> = serde_json::from_str(message.as_str()).unwrap();
-                                        println!("{}: {}",
-                                            match hash.get("status").unwrap().to_lowercase().as_str(){
-                                                "failed" => "Failed".red().bold(),
-                                                "success" => "Success".green().bold(),
-                                                e => e.bold()
-                                            },
-                                            hash.get("details").unwrap()
-                                        );
+                                    Ok(res) => {
+                                        let res: Response = serde_json::from_str(&res).unwrap();
+                                        println!("{res:#?}");
+
+                                        for message in res.messages.iter() {
+                                                println!("[{}] {}",
+                                                match message.status {
+                                                    ServerResponseStatus::Failed => "Failed".red().bold(),
+                                                    ServerResponseStatus::Success => "Success".green().bold(),
+                                                },
+                                                message.body.bold()
+                                            );
+                                        }
                                     }
                                 }
                             } => {}
@@ -66,9 +69,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Status => select!(_ = async{
                             match socket.receive().await {
                                 Err(e) => error!("Cannot recieve response from unix stream: {e}"),
-                                Ok(message) => {
-                                    let hash: HashMap<String, String> =
-                                        serde_json::from_str(message.as_str()).unwrap();
+                                Ok(res) => {
+                                    let res = serde_json::from_str::<Response>(&res).unwrap();
+                                    let hash:  HashMap<String,String> =
+                                        serde_json::from_str(&res.messages[0].body).unwrap();
 
                                     let (ip, port) =
                                         (hash.get("ip").unwrap(), hash.get("port").unwrap());

@@ -1,9 +1,10 @@
 use app::Logger;
 use log::{error, info, warn};
 use serde_json;
+use std::collections::HashMap;
 
 use tokio::{self, spawn};
-use utils::unix_socket::{DaemonCommands::*, DaemonRequest, ServerMessage, UnixSocket};
+use utils::unix_socket::{Commands::*, Request, Response, ServerResponseMessage, UnixSocket};
 use vnsd::server::{
     api::auth::database::{BlockList, Create, InitDatabase},
     Server,
@@ -51,11 +52,12 @@ async fn main() -> Result<(), std::io::Error> {
         // Listening to UNIX socket commands
         async {
             // TODO: refactoring handling UNIX connections
-            'outer: loop {
+            loop {
                 match listener.receive().await {
                     Ok(message) => {
-                        if let Ok(message) = serde_json::from_str::<DaemonRequest<String>>(&message)
-                        {
+                        if let Ok(message) = serde_json::from_str::<Request<String>>(&message) {
+                            let mut res = Response::new();
+
                             match message.command {
                                 PauseServer => {
                                     warn!("Pause server...",);
@@ -63,106 +65,53 @@ async fn main() -> Result<(), std::io::Error> {
                                     if let Err(err) = server.pause().await {
                                         error!("Cannot pause connections: {}", err.clone());
 
-                                        if let Err(e) = listener
-                                            .send(
-                                                ServerMessage::failed(
-                                                    format!("{}", err.clone()).as_str(),
-                                                )
-                                                .as_str(),
-                                            )
-                                            .await
-                                        {
-                                            error!("Couldn't send to unix stream: {e}");
-                                        }
+                                        res.push(ServerResponseMessage::failed(&format!(
+                                            "{}",
+                                            err.clone()
+                                        )));
                                     } else {
                                         let message =
                                             "Server accecping incoming connections has been pause.";
                                         warn!("{message}");
-                                        if let Err(e) = listener
-                                            .send(ServerMessage::success(message).as_str())
-                                            .await
-                                        {
-                                            error!("Couldn't send to unix stream: {e}");
-                                        }
+
+                                        res.push(ServerResponseMessage::success(message));
                                     }
                                 }
                                 ResumeServer => {
                                     info!("Resume server...",);
                                     if let Err(err) = server.resume().await {
                                         error!("Cannot resume connections: {}", err.clone());
-                                        if let Err(e) = listener
-                                            .send(
-                                                ServerMessage::failed(
-                                                    format!("{}", err.clone()).as_str(),
-                                                )
-                                                .as_str(),
-                                            )
-                                            .await
-                                        {
-                                            error!("Could send to unix stream: {e}");
-                                        }
+
+                                        res.push(ServerResponseMessage::failed(&format!("{err}")));
                                     } else {
                                         let message =
-                                            "Server accecping incoming connections has been resume.";
+                                                    "Server accecping incoming connections has been resume.";
                                         info!("{message}");
 
-                                        if let Err(e) = listener
-                                            .send(ServerMessage::success(message).as_str())
-                                            .await
-                                        {
-                                            error!("Couldn't send to unix stream: {e}");
-                                        }
+                                        res.push(ServerResponseMessage::failed(message));
                                     }
                                 }
                                 StatusServer => {
                                     let (ip, port) = server.address();
+                                    let mut body = HashMap::new();
 
-                                    if let Err(e) = listener
-                                        .send(
-                                            ServerMessage::new(vec![
-                                                (
-                                                    "status",
-                                                    server
-                                                        .status()
-                                                        .get_state()
-                                                        .to_string()
-                                                        .as_str(),
-                                                ),
-                                                ("ip", ip.as_str()),
-                                                ("port", port.to_string().as_str()),
-                                            ])
-                                            .as_str(),
-                                        )
-                                        .await
-                                    {
-                                        error!("Could send to unix stream: {e}");
-                                    }
+                                    body.insert("ip", ip);
+                                    body.insert("port", port.to_string());
+                                    body.insert("status", server.status().get_state().to_string());
+
+                                    res.push(ServerResponseMessage::success(&format!("{body:?}")));
                                 }
                                 ShutdownServer => {
                                     warn!("Shutdown server...");
 
                                     if let Err(err) = server.stop().await {
                                         error!("Cannot stop server: {}", err.clone());
-                                        if let Err(e) = listener
-                                            .send(
-                                                ServerMessage::failed(
-                                                    format!("{}", err.clone()).as_str(),
-                                                )
-                                                .as_str(),
-                                            )
-                                            .await
-                                        {
-                                            error!("Could send to unix stream: {e}");
-                                        }
+                                        res.push(ServerResponseMessage::failed(&format!("{err}")));
                                     } else {
                                         let message = "Server has been shutdown, you need to restart vnsd to running it again.";
                                         warn!("{message}");
-                                        if let Err(e) = listener
-                                            .send(ServerMessage::success(message).as_str())
-                                            .await
-                                        {
-                                            error!("Couldn't send to unix stream: {e}");
-                                        }
+
+                                        res.push(ServerResponseMessage::failed(message));
                                     }
                                 }
                                 BlockIPs => {
@@ -171,29 +120,21 @@ async fn main() -> Result<(), std::io::Error> {
                                     db.init().unwrap();
                                     for addr in message.args.iter() {
                                         match BlockList::block(db.conn(), addr) {
-                                            Ok(_) => info!("{addr} has been blocked"),
-                                            Err(e) => {
-                                                error!("Cannot block {addr}: {e}");
-                                                if let Err(e) = listener
-                                                    .send(
-                                                        ServerMessage::failed(&e.details).as_str(),
-                                                    )
-                                                    .await
-                                                {
-                                                    error!("Couldn't send to unix stream: {e}");
-                                                }
-                                                continue 'outer;
+                                            Ok(_) => {
+                                                info!("{addr} has been blocked");
+
+                                                res.push(ServerResponseMessage::success(&format!(
+                                                    "{addr} has been blocked"
+                                                )));
+                                            }
+                                            Err(err) => {
+                                                error!("Cannot block {addr}: {err}");
+
+                                                res.push(ServerResponseMessage::failed(&format!(
+                                                    "{err}"
+                                                )));
                                             }
                                         }
-                                    }
-
-                                    if let Err(e) = listener
-                                        .send(
-                                            ServerMessage::success("Blocking was success").as_str(),
-                                        )
-                                        .await
-                                    {
-                                        error!("Couldn't send to unix stream: {e}");
                                     }
                                 }
                                 UnBlockIPs => {
@@ -201,35 +142,28 @@ async fn main() -> Result<(), std::io::Error> {
                                     db.init().unwrap();
                                     for addr in message.args.iter() {
                                         match BlockList::unblock(db.conn(), addr) {
-                                            Ok(_) => info!("{addr} has been unblocked"),
-                                            Err(e) => {
-                                                error!("Cannot unblock {addr}: {e}");
-                                                if let Err(e) = listener
-                                                    .send(
-                                                        ServerMessage::failed(&e.details).as_str(),
-                                                    )
-                                                    .await
-                                                {
-                                                    error!("Couldn't send to unix stream: {e}");
-                                                }
-                                                continue 'outer;
+                                            Ok(_) => {
+                                                info!("{addr} has been unblocked");
+                                                res.push(ServerResponseMessage::success(&format!(
+                                                    "{addr} has been unblocked"
+                                                )));
+                                            }
+                                            Err(err) => {
+                                                error!("Cannot unblock {addr}: {err}");
+
+                                                res.push(ServerResponseMessage::failed(&format!(
+                                                    "{err}"
+                                                )));
                                             }
                                         }
                                     }
-
-                                    if let Err(e) = listener
-                                        .send(
-                                            ServerMessage::success(
-                                                "Addresses unblocked successfully",
-                                            )
-                                            .as_str(),
-                                        )
-                                        .await
-                                    {
-                                        error!("Couldn't send to unix stream: {e}");
-                                    }
                                 }
                                 _ => (),
+                            }
+                            if let Err(e) =
+                                listener.send(&format!("{}", serde_json::json!(res))).await
+                            {
+                                error!("Could send to unix stream: {e}");
                             }
                         }
                     }
