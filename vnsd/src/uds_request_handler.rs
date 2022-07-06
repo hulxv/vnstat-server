@@ -100,10 +100,11 @@ impl<'a> RequestHandler<'a> {
                     )));
                 }
                 Err(err) => {
-                    error!("Cannot block {addr}: {err}");
+                    error!("Cannot block \"{addr}\": {err}");
 
-                    self.res
-                        .push(ServerResponseMessage::failed(&format!("{err}")));
+                    self.res.push(ServerResponseMessage::failed(&format!(
+                        "Cannot block \"{addr}\": {err}"
+                    )));
                 }
             }
         }
@@ -121,10 +122,10 @@ impl<'a> RequestHandler<'a> {
                     )));
                 }
                 Err(err) => {
-                    error!("Cannot unblock {addr}: {err}");
+                    error!("Cannot unblock \"{addr}\": {err}");
 
                     self.res.push(ServerResponseMessage::failed(&format!(
-                        "Cannot unblock {addr}: {err}"
+                        "Cannot unblock \"{addr}\": {err}"
                     )));
                 }
             }

@@ -3,6 +3,7 @@ use crate::server::api::auth::database::{schema::block_list, Statements};
 use anyhow::Result;
 use chrono::Local;
 use diesel::{insert_into, EqAll, QueryDsl, RunQueryDsl, SqliteConnection};
+use regex::Regex;
 use serde_derive::Serialize;
 
 pub struct BlockError {
@@ -25,10 +26,11 @@ impl std::fmt::Display for BlockError {
     }
 }
 
-// TODO: add error for invalid ip addresss pattern
+#[derive(PartialEq, Debug)]
 pub enum BlockErrorKinds {
     AlreadyBlocked,
     AlreadyUnBlocked,
+    InvliadIPv4Pattern,
 }
 
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq, Serialize)]
@@ -40,8 +42,14 @@ pub struct BlockList {
 }
 
 impl BlockList {
-    pub fn new(conn: &SqliteConnection, ip_addr: &str) -> Self {
-        // TODO: check from validate ip address pattern
+    pub fn new(conn: &SqliteConnection, addr: &str) -> Result<Self, BlockError> {
+        let pattern = Regex::new(r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$").unwrap();
+        if !pattern.is_match(addr) {
+            return Err(BlockError::new(
+                BlockErrorKinds::InvliadIPv4Pattern,
+                "Invalid IPv4 address pattern",
+            ));
+        }
         let last_id = match block_list::table.load::<Self>(conn) {
             Err(_) => 0,
             Ok(keys) => match keys.last() {
@@ -49,28 +57,36 @@ impl BlockList {
                 None => 0,
             },
         };
-        Self {
+        Ok(Self {
             id: last_id + 1,
-            ip_addr: ip_addr.to_owned(),
+            ip_addr: addr.to_owned(),
             blocked_at: Local::now().to_rfc2822(),
-        }
+        })
     }
 
-    pub fn block(conn: &SqliteConnection, ip_addr: &str) -> Result<(), BlockError> {
-        if Self::find(conn, |l| l.ip_addr == ip_addr).is_some() {
+    pub fn block(conn: &SqliteConnection, addr: &str) -> Result<(), BlockError> {
+        if Self::find(conn, |l| l.ip_addr == addr).is_some() {
             return Err(BlockError::new(
                 BlockErrorKinds::AlreadyBlocked,
-                &format!("already blocked"),
+                &format!("IP address already blocked"),
             ));
         }
-        Self::new(conn, ip_addr).create(conn).unwrap();
+        Self::new(conn, addr)?.create(conn).unwrap();
         Ok(())
     }
     pub fn unblock(conn: &SqliteConnection, addr: &str) -> Result<(), BlockError> {
+        let pattern = Regex::new(r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$").unwrap();
+        if !pattern.is_match(addr) {
+            return Err(BlockError::new(
+                BlockErrorKinds::InvliadIPv4Pattern,
+                "Invalid IPv4 address pattern",
+            ));
+        }
+
         if Self::find(conn, |l| l.ip_addr == addr).is_none() {
             return Err(BlockError::new(
                 BlockErrorKinds::AlreadyUnBlocked,
-                &format!("already un-blocked"),
+                &format!("IP address already un-blocked"),
             ));
         }
 
@@ -121,5 +137,59 @@ impl Statements for BlockList {
             .unwrap()
             .into_iter()
             .find(|e| f(e.clone().into()))
+    }
+}
+
+mod tests {
+    use super::*;
+    use crate::api::auth::*;
+    #[test]
+    async fn block_nvalid_ip_address() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let invalid_addresses = vec![
+            "256.1.1.1",
+            "2222.1.1.1",
+            "1..1.1.1",
+            "1g.1.1.1",
+            "ff.dd.sds.sfs",
+            "hello.world.!.com",
+            "1.1.1",
+            "127.1.0.?",
+            "1.1.1.1.1",
+            "1.1.1.1.1",
+            "1.1.1.1.",
+            ".1.1.1.1",
+        ];
+        for addr in invalid_addresses {
+            assert_eq!(
+                BlockErrorKinds::InvliadIPv4Pattern,
+                BlockList::block(db.conn(), addr).unwrap_err().kind
+            );
+        }
+    }
+    #[test]
+    async fn unblock_nvalid_ip_address() {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let invalid_addresses = vec![
+            "256.1.1.1",
+            "2222.1.1.1",
+            "1..1.1.1",
+            "1g.1.1.1",
+            "ff.dd.sds.sfs",
+            "hello.world.!.com",
+            "1.1.1",
+            "127.1.0.?",
+            "1.1.1.1.1",
+            "1.1.1.1.",
+            ".1.1.1.1",
+        ];
+        for addr in invalid_addresses {
+            assert_eq!(
+                BlockErrorKinds::InvliadIPv4Pattern,
+                BlockList::block(db.conn(), addr).unwrap_err().kind
+            );
+        }
     }
 }
