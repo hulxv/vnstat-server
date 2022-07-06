@@ -1,5 +1,4 @@
-use super::model::*;
-use super::*;
+use super::{model::*, schema::*, *};
 use chrono::{prelude::*, *};
 
 use dirs::config_dir;
@@ -121,7 +120,6 @@ async fn create_new_connection_with_its_key() {
 
     let key = Keys::generate_new_key(db.conn(), &connection.uuid());
     key.create(db.conn()).unwrap();
-
     assert!(keys::table.load::<Keys>(db.conn()).unwrap().contains(&key));
     assert!(connections::table
         .load::<Connections>(db.conn())

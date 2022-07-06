@@ -1,6 +1,6 @@
 mod model;
 mod query;
-mod schema;
+pub mod schema;
 mod tests;
 
 pub use model::*;
