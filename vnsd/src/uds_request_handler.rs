@@ -88,7 +88,6 @@ impl<'a> RequestHandler<'a> {
     }
 
     fn on_block_ip_addresses(&mut self) {
-        info!("block {:?}", self.req.args);
         let db = InitDatabase::connect().unwrap();
         db.init().unwrap();
         for addr in self.req.args.iter() {

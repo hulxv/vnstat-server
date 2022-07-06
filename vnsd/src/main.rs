@@ -11,7 +11,7 @@ async fn main() -> std::process::ExitCode {
     Logger::init();
 
     match Configs::get_file_path() {
-        Ok(path) => info!("configuration file located in: {path}",),
+        Ok(path) => info!("configuration file located in: \"{path}\"",),
         Err(err) => {
             error!("Cannot locate configuration file: {err}");
             return std::process::ExitCode::FAILURE;
