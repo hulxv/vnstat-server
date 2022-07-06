@@ -43,6 +43,8 @@ pub enum Commands {
     PauseServer,
     BlockIPs,
     UnBlockIPs,
+    BlockList,
+    ConnectionsList,
 }
 
 impl FromStr for Commands {
@@ -57,6 +59,8 @@ impl FromStr for Commands {
             "resume" | "server-resume" => Ok(Self::ResumeServer),
             "block" | "server-block" => Ok(Self::BlockIPs),
             "unblock" | "server-unblock" => Ok(Self::UnBlockIPs),
+            "block-list" | "server-block-list" => Ok(Self::BlockList),
+            "connections-list" | "server-connections-list" => Ok(Self::ConnectionsList),
             _ => Err("invalid message"),
         }
     }
@@ -73,6 +77,8 @@ impl ToString for Commands {
             Self::StatusServer => "server-status",
             Self::BlockIPs => "server-block",
             Self::UnBlockIPs => "server-unblock",
+            Self::ConnectionsList => "server-connections-list",
+            Self::BlockList => "server-block-list",
         }
         .to_owned()
     }

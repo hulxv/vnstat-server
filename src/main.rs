@@ -3,13 +3,14 @@ use std::{collections::HashMap, str::FromStr, time::Duration};
 use app::log::Logger;
 use clap::Parser;
 use colored::Colorize;
+use comfy_table::{presets::UTF8_FULL, Table};
 use log::{error, warn};
 use tokio::{select, time};
 use utils::unix_socket::{
     Commands as UnixSocketCommands, Request, Response, ServerResponseStatus, UnixSocket,
 };
 use vns::cli::{
-    Args, Commands,
+    Args, Commands, List as ListType,
     ServerCommands::{self, *},
 };
 
@@ -128,6 +129,50 @@ fn handle_response(command: ServerCommands, res: Response) {
                 _ => (),
             }
         }
+        List { list } => {
+            use serde_derive::Deserialize;
+            let mut table = Table::new();
+            match list {
+                ListType::Block => {
+                    #[derive(Deserialize)]
+                    struct Row {
+                        pub ip_addr: String,
+                        pub blocked_at: String,
+                    }
+
+                    let data: Vec<Row> = serde_json::from_str(&res.messages[0].body).unwrap();
+                    table
+                        .load_preset(UTF8_FULL)
+                        .set_header(["IP address", "Blocked at"]);
+                    for row in data {
+                        table.add_row([row.ip_addr, row.blocked_at]);
+                    }
+                }
+                ListType::Connections => {
+                    #[derive(Deserialize)]
+
+                    struct Row {
+                        pub uuid: String,
+                        pub ip_addr: String,
+                        pub user_agent: String,
+                        pub connected_at: String,
+                    }
+
+                    let data: Vec<Row> = serde_json::from_str(&res.messages[0].body).unwrap();
+                    table.load_preset(UTF8_FULL).set_header([
+                        "UUID",
+                        "IP address",
+                        "User Agent",
+                        "Connected at",
+                    ]);
+                    for row in data {
+                        table.add_row([row.uuid, row.ip_addr, row.user_agent, row.connected_at]);
+                    }
+                }
+            }
+            println!("{table}");
+        }
+
         _ => {
             for message in res.messages.iter() {
                 println!(

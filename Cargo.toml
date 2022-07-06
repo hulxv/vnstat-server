@@ -25,3 +25,4 @@ log = "0.4.17"
 utils = {path= "libs/utils"}
 app = {path="app"}
 colored = "2.0.0"
+comfy-table = "6.0.0"

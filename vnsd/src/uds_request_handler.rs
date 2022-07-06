@@ -1,5 +1,5 @@
 use crate::server::{
-    api::auth::database::{BlockList, InitDatabase},
+    api::auth::database::{BlockList, Connections, InitDatabase, Statements},
     Server,
 };
 use log::*;
@@ -19,24 +19,14 @@ impl<'a> RequestHandler<'a> {
     }
     pub async fn handle(&mut self) {
         match self.req.command {
-            PauseServer => {
-                self.on_pause_server().await;
-            }
-            ResumeServer => {
-                self.on_resume_server().await;
-            }
-            ShutdownServer => {
-                self.on_shutdown_server().await;
-            }
-            StatusServer => {
-                self.on_status_server();
-            }
-            BlockIPs => {
-                self.on_block_ip_addresses();
-            }
-            UnBlockIPs => {
-                self.on_unblock_ip_addresses();
-            }
+            PauseServer => self.on_pause_server().await,
+            ResumeServer => self.on_resume_server().await,
+            ShutdownServer => self.on_shutdown_server().await,
+            StatusServer => self.on_status_server(),
+            BlockIPs => self.on_block_ip_addresses(),
+            UnBlockIPs => self.on_unblock_ip_addresses(),
+            BlockList => self.on_block_list(),
+            ConnectionsList => self.on_connections_list(),
             _ => (),
         }
     }
@@ -140,5 +130,25 @@ impl<'a> RequestHandler<'a> {
                 }
             }
         }
+    }
+    fn on_block_list(&mut self) {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let block_list = BlockList::select(db.conn(), |_| true);
+
+        self.res.push(ServerResponseMessage::success(&format!(
+            "{}",
+            serde_json::json!(block_list)
+        )));
+    }
+    fn on_connections_list(&mut self) {
+        let db = InitDatabase::connect().unwrap();
+        db.init().unwrap();
+        let connections_list = Connections::select(db.conn(), |_| true);
+
+        self.res.push(ServerResponseMessage::success(&format!(
+            "{}",
+            serde_json::json!(connections_list)
+        )));
     }
 }

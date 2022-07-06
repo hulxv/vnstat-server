@@ -2,17 +2,17 @@
 
 use super::*;
 use anyhow::{anyhow, Result};
-use diesel::{
-    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
-};
-use uuid::Uuid;
-
 use app::Configs;
 use chrono::{
     prelude::{DateTime, Local},
     Duration, FixedOffset,
 };
+use diesel::{
+    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
+};
 use rand::{distributions::Alphanumeric, Rng};
+use serde_derive::Serialize;
+use uuid::Uuid;
 
 // Database Info
 pub const DATABASE_VERSION: i32 = 1;
@@ -36,7 +36,7 @@ pub trait Statements {
         F: Fn(Self::Args) -> bool;
 }
 
-#[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
+#[derive(Queryable, Insertable, Clone, Debug, PartialEq, Serialize)]
 #[table_name = "connections"]
 pub struct Connections {
     pub uuid: String,
@@ -105,7 +105,7 @@ impl Statements for Connections {
     }
 }
 
-#[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
+#[derive(Queryable, Insertable, Clone, Debug, PartialEq, Serialize)]
 #[table_name = "keys"]
 pub struct Keys {
     pub id: i32,
@@ -258,12 +258,12 @@ pub enum BlockErrorKinds {
     AlreadyUnBlocked,
 }
 
-#[derive(Queryable, Insertable, Clone, Debug, PartialEq)]
+#[derive(Queryable, Insertable, Clone, Debug, PartialEq, Serialize)]
 #[table_name = "block_list"]
 pub struct BlockList {
-    id: i32,
-    ip_addr: String,
-    blocked_at: String,
+    pub id: i32,
+    pub ip_addr: String,
+    pub blocked_at: String,
 }
 
 impl BlockList {

@@ -49,6 +49,15 @@ pub enum ServerCommands {
         #[clap(required = true, value_parser)]
         addresses: Vec<String>,
     },
+    List {
+        #[clap(subcommand)]
+        list: List,
+    },
+}
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Subcommand)]
+pub enum List {
+    Connections,
+    Block,
 }
 
 impl Display for ServerCommands {
@@ -62,6 +71,10 @@ impl Display for ServerCommands {
             ServerCommands::Resume => write!(f, "resume"),
             ServerCommands::Block { .. } => write!(f, "block"),
             ServerCommands::UnBlock { .. } => write!(f, "unblock"),
+            ServerCommands::List { list } => match list {
+                List::Block => write!(f, "block-list"),
+                List::Connections => write!(f, "connections-list"),
+            },
         }
     }
 }
