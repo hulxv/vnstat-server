@@ -20,7 +20,12 @@ pub async fn login(
         conn.realip_remote_addr().unwrap(),
         req.headers().get(USER_AGENT).unwrap().to_str().unwrap(),
     ) {
-        Ok(result) => HttpResponse::Ok().json(result),
+        Ok(result) => HttpResponse::Ok().json(
+            Response::new()
+                .status(ResponseStatus::Success)
+                .data(&result)
+                .build(),
+        ),
         Err(err) => HttpResponse::Unauthorized().json(
             ResponseError::new()
                 .code(401)
