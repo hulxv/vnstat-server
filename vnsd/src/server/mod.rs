@@ -88,13 +88,9 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new() -> IOResult<Self> {
+    pub fn default() -> IOResult<Self> {
         let addr = ServerAddr::from_config_file();
-        let runner = match ServerRunner::new(addr.clone()) {
-            Err(e) => return Err(e),
-            Ok(s) => s,
-        };
-        // let handler = runner.handl / e();
+        let runner = ServerRunner::new(addr.clone())?;
         Ok(Self {
             addr,
             handler: Arc::new(runner.handle()),
@@ -103,6 +99,15 @@ impl Server {
         })
     }
 
+    pub fn new(addr: ServerAddr) -> IOResult<Self> {
+        let runner = ServerRunner::new(addr.clone())?;
+        Ok(Self {
+            addr,
+            handler: Arc::new(runner.handle()),
+            runner: Arc::new(Mutex::new(Box::pin(runner))),
+            status: ServerStatus::new(ServerStatusState::InActive),
+        })
+    }
     pub fn address(&self) -> (String, u16) {
         self.addr.get_tuple()
     }

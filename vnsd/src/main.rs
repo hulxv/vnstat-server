@@ -2,14 +2,19 @@ use app::{Configs, Logger};
 use log::{error, info, warn};
 use serde_json;
 
+use clap::Parser;
 use tokio::{self, spawn};
 use utils::unix_socket::{Request, Response, UnixSocket};
-use vnsd::{server::Server, uds_request_handler::RequestHandler};
+use vnsd::{
+    cli::Args,
+    server::{Server, ServerAddr},
+    uds_request_handler::RequestHandler,
+};
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
     Logger::init();
-
+    let args = Args::parse();
     match Configs::get_file_path() {
         Ok(path) => info!("configuration file located in: \"{path}\"",),
         Err(err) => {
@@ -17,6 +22,7 @@ async fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
+    let configs = Configs::init().unwrap();
 
     let sock_path = "/tmp/vnsd.sock";
     let mut listener = match UnixSocket::bind(sock_path) {
@@ -29,9 +35,12 @@ async fn main() -> std::process::ExitCode {
             lis
         }
     };
-    let server = Server::new()
-        .map_err(|e| error!("Cannot bind http server: {e}"))
-        .unwrap();
+    let server = Server::new(ServerAddr::new(
+        &args.ip.unwrap_or(configs.server().ip()),
+        args.port.unwrap_or(configs.server().port()),
+    ))
+    .map_err(|e| error!("Cannot bind http server: {e}"))
+    .unwrap();
 
     spawn(async move {
         tokio::signal::ctrl_c()

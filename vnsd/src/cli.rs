@@ -3,15 +3,9 @@ use clap::Parser;
 #[clap(author, version, about)]
 pub struct Args {
     /// select pid file
-    #[clap(long, short)]
-    pub pid_file: Option<String>,
+    #[clap(long)]
+    pub ip: Option<String>,
     /// set daemon process user
-    #[clap(long, short)]
-    pub user: Option<String>,
-    /// set daemon process group
-    #[clap(long, short)]
-    pub group: Option<String>,
-    /// run in foreground
-    #[clap(long, short)]
-    pub foreground: bool,
+    #[clap(long)]
+    pub port: Option<u16>,
 }
