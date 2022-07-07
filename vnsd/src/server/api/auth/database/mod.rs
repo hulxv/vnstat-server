@@ -78,11 +78,14 @@ pub struct DatabaseFile {
 impl DatabaseFile {
     pub fn new() -> Result<Self> {
         let database_dir = [
-            config_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap(),
+            match std::env::var("SUDO_USER") {
+                Ok(_) => "/etc".to_owned(),
+                Err(_) => config_dir()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            },
             "/vns/database".to_owned(),
         ]
         .concat();
