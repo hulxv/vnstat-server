@@ -1,9 +1,7 @@
 use crate::server::api::auth::database::{schema::info, Create, Statements};
 use anyhow::Result;
 
-use diesel::{
-    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
-};
+use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use serde_derive::Serialize;
 
 // Database Info

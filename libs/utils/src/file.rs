@@ -1,6 +1,6 @@
 use std::{fs::File as fsFile, io::Write, path::Path};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 pub struct File {
     path: String,

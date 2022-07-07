@@ -1,7 +1,10 @@
+#[allow(unused_imports)]
 use super::{model::*, schema::*, *};
+#[allow(unused_imports)]
 use chrono::{prelude::*, *};
-
+#[allow(unused_imports)]
 use dirs::config_dir;
+#[allow(unused_imports)]
 use std::fs::remove_file;
 
 #[test]

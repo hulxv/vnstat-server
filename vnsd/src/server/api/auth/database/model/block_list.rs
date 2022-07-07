@@ -141,7 +141,9 @@ impl Statements for BlockList {
 }
 
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
+    #[allow(unused_imports)]
     use crate::api::auth::*;
     #[test]
     async fn block_nvalid_ip_address() {

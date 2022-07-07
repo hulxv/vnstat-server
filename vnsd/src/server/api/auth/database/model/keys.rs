@@ -4,9 +4,7 @@ use anyhow::Result;
 use app::Configs;
 use chrono::{DateTime, Duration, FixedOffset, Local};
 
-use diesel::{
-    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
-};
+use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use rand::{distributions::Alphanumeric, Rng};
 use serde_derive::Serialize;
 

@@ -4,9 +4,7 @@ use anyhow::Result;
 use chrono::{DateTime, FixedOffset, Local};
 
 use ::uuid::Uuid;
-use diesel::{
-    insert_into, prelude::*, Insertable, QueryDsl, Queryable, RunQueryDsl, SqliteConnection,
-};
+use diesel::{insert_into, Insertable, Queryable, RunQueryDsl, SqliteConnection};
 use serde_derive::Serialize;
 
 #[derive(Queryable, Insertable, Clone, Debug, PartialEq, Serialize)]

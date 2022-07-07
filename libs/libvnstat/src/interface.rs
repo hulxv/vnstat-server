@@ -1,5 +1,5 @@
 use super::db::{models::Interface, VnStatDatabase};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 pub struct VnStatInterface;
 
 impl VnStatInterface {

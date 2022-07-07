@@ -5,9 +5,8 @@ mod tests;
 
 pub use model::*;
 use query::*;
-use schema::*;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use diesel::{
     dsl::sql_query,
     prelude::{Connection, SqliteConnection},

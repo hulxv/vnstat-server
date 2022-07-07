@@ -1,14 +1,12 @@
 use app::Configs;
 
 use anyhow::{anyhow, Result};
-use diesel::serialize::Output;
 use std::{
     collections::HashMap,
     fs,
     process::{ExitStatus, Stdio},
 };
 use tokio::process::Command;
-// use utils::process::{ CommandOutput};
 
 #[derive(Debug, Clone)]
 pub struct VnStatConfig {
