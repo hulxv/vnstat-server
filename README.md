@@ -15,7 +15,7 @@
 
 ## Documentation
 
-Read [Documentation](./docs/getting-start.md) for more information
+Read [Documentation](./docs/getting-started.md) for more information
 
 ---
 
