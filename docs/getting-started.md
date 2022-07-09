@@ -27,7 +27,7 @@
 
    ```terminal
    cd target/release
-   mv vns vnsd /bin/
+   mv vns vnsd /bin
    ```
 
 ---
@@ -36,13 +36,13 @@
 
 Before using vnStat-server, you should know that there are two programs, one is used as a daemon and another is used as a utility to do some operations like controlling the HTTP server ([see](./cli.md) for more).
 
-### vnsd
+- vnsd (vnStat Server Daemon)
 
-It's a daemon that is used to run an HTTP server (RESTful API) that is used to control in vnStat and get its data by HTTP requests.
+  It's a daemon that is used to run an HTTP server (RESTful API) that is used to control in vnStat and get its data by HTTP requests.
 
-### vns
+- vns (vnStat Server cli utility)
 
-a Utility used by the end-user to control in HTTP server efficiently and easily by connecting with vnsd by [unix-socket](https://man7.org/linux/man-pages/man7/unix.7.html).
+  a Utility used by the end-user to control in HTTP server efficiently and easily by connecting with vnsd by [unix-socket](https://man7.org/linux/man-pages/man7/unix.7.html).
 
 ## More
 
