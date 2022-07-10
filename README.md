@@ -22,10 +22,10 @@ Read [Documentation](./docs/getting-started.md) for more information
 ## License
 
 vnStat Server is available under the [GPL-2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html) license.
-For more, you can read [License](https://github.com/Hulxv/vnstat-client/blob/main/LICENSE) file.
+For more, you can read [License](LICENSE) file.
 
 <div align="center">
 
-[![GitHub license](https://img.shields.io/github/license/Hulxv/vnstat-server?style=for-the-badge)](https://github.com/Hulxv/vnstat-server/blob/main/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/Hulxv/vnstat-server?style=for-the-badge)](LICENSE)
 
 </div>
