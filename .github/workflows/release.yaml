@@ -34,7 +34,7 @@ jobs:
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: vns,vnsd
-          archive: $bin-$tag-$target
           include: LICENSE
+          archive: vns-$tag-$target
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
