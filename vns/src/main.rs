@@ -1,10 +1,12 @@
-use std::{collections::HashMap, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use app::log::Logger;
 use clap::Parser;
 use colored::Colorize;
 use comfy_table::{presets::UTF8_FULL, Table};
 use log::{error, warn};
+use serde_derive::Deserialize;
+use serde_json::json;
 use tokio::{select, time};
 use utils::unix_socket::{
     Commands as UnixSocketCommands, Request, Response, ServerResponseStatus, UnixSocket,
@@ -15,7 +17,6 @@ use vns::cli::{
 };
 
 const TIME_OF_WAITING_RESPONSE_FROM_UNIX_SERVER: u64 = 6000; // By Milliseconds
-use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,65 +73,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn handle_response(command: ServerCommands, res: Response) {
     match command {
         Status => {
-            let hash: HashMap<String, String> =
-                serde_json::from_str(&res.messages[0].body).unwrap();
-
-            let (ip, port) = (hash.get("ip").unwrap(), hash.get("port").unwrap());
-
-            match hash.get("status").unwrap().to_lowercase().as_str() {
-                "active" => {
-                    println!(
-                        "{} ({}) {}:",
-                        "Active".green().bold(),
-                        "Running".yellow().bold(),
-                        "on".bold(),
-                    );
-                    println!(
-                        "{: >1}  {}",
-                        "",
-                        format!("{:<5} {}", "IP", ip.yellow(),).bold()
-                    );
-                    println!(
-                        "{: >1}  {}",
-                        "",
-                        format!("{:<5} {}", "PORT", port.yellow()).bold()
-                    );
-                }
-                "idle" => {
-                    println!("{} ({})", "Idle".cyan().bold(), "Paused".blue().bold(),);
-
-                    println!(
-                        "\n{} ",
-                        format!(
-                            "{}\n {} \n{}:  \n $ {}",
-                            "Note".bright_blue(),
-                            "To resume incoming connections",
-                            "run".yellow(),
-                            "vns server resume",
-                        )
-                        .bold()
-                    )
-                }
-                "inactive" => {
-                    println!(
-                        "{} ({})",
-                        "Inactive".yellow().bold(),
-                        "STOPPED".red().bold(),
-                    );
-                    println!(
-                        "\n{}\n {}",
-                        "Note".bright_blue().bold(),
-                        format!(
-                            "Restart {} to re-running the server.",
-                            "vns daemon".yellow(),
-                        )
-                    )
-                }
-                _ => (),
+            #[derive(Deserialize)]
+            struct Status {
+                status: String,
+                ip: String,
+                port: String,
             }
+            let res: Status = serde_json::from_str(&res.messages[0].body).unwrap();
+
+            println!(
+                "{:<7} {}",
+                "Status".white(),
+                match res.status.to_lowercase().as_str() {
+                    "active" => format!("{} ({})", "Active", "Running".green()),
+                    "inactive" => format!("{} ({})", "InActive", "Stopped".red()),
+                    "idle" => format!("{} ({})", "Idle", "Paused".blue()),
+                    _ => "".to_owned(),
+                }
+            );
+            println!("{:<7} {}", "IP".white(), res.ip);
+            println!("{:<7} {}", "PORT".white(), res.port);
         }
         List { list } => {
-            use serde_derive::Deserialize;
             let mut table = Table::new();
             match list {
                 ListType::Block => {
