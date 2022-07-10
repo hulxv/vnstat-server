@@ -29,7 +29,7 @@ pub struct Payload {
 }
 
 #[put("/config")]
-pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
+pub async fn edit_config(payload: web::Json<Vec<Payload>>) -> HttpResponse {
     if Configs::init().unwrap().security().read_only() {
         return HttpResponse::Forbidden().json(
             ResponseError::new()
@@ -38,23 +38,30 @@ pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
                 .build(),
         );
     }
-    match VnStat
-        .config()
-        .set_prop(&payload.clone().prop, &payload.clone().value)
-        .await
-    {
-        Ok(exit_status) => {
-            info!("{exit_status}");
-            HttpResponse::Ok().json(
-                Response::new()
-                    .status(ResponseStatus::Success)
-                    .data(json!({ payload.clone().prop: payload.clone().value }))
-                    .build(),
-            )
-        }
-        Err(err) => {
-            error!("{err}");
-            HttpResponse::InternalServerError().json(ResponseError::new().build())
+    for p in payload.iter() {
+        match VnStat.config().set_prop(&p.prop, &p.value).await {
+            Ok(exit_status) => {
+                info!("{exit_status}");
+                if !exit_status.success() {
+                    error!(
+                        "Cannot set '{}' to '{}': {}",
+                        p.prop,
+                        p.value,
+                        exit_status.to_string()
+                    );
+                    return HttpResponse::InternalServerError().json(ResponseError::new().build());
+                }
+            }
+            Err(err) => {
+                error!("{err}");
+                return HttpResponse::InternalServerError().json(ResponseError::new().build());
+            }
         }
     }
+    HttpResponse::Ok().json(
+        Response::new()
+            .status(ResponseStatus::Success)
+            .data(json!(payload))
+            .build(),
+    )
 }
