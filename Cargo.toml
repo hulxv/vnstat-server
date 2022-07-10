@@ -4,7 +4,7 @@ version = "1.0.0-beta.0"
 edition = "2021"
 authors = ["Mohamed Emad (hulxxv@gmail.com)"]
 description = "Serve your vnStat data and controlling in it easily by HTTP requests" 
-
+default-run = "vns"
 [workspace] 
 members = [
     "vns",
@@ -13,6 +13,7 @@ members = [
     "libs/utils",
     "app"
 ]
+
 
 
 [[bin]]
