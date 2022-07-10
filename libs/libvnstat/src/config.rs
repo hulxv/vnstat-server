@@ -37,18 +37,25 @@ impl VnStatConfig {
 
     pub async fn set_prop(&self, key: &str, value: &str) -> Result<ExitStatus> {
         let sed_script = format!("s/.*{key} .*/{key} {value}/g");
-        let status = Command::new("sed")
+        let output = Command::new("sed")
             .args(vec!["-i", &sed_script, &self.path])
             .stdout(Stdio::null())
-            .spawn()?
-            .wait_with_output()
-            .await?
-            .status;
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
+            .output()
+            .await?;
 
-        if !status.success() {
-            return Err(anyhow!("{}:  operation doesn't success", status));
+        if let Ok(err) = String::from_utf8(output.stderr) {
+            if !err.is_empty() {
+                return Err(anyhow!(err));
+            }
         }
-        Ok(status)
+
+        if !output.status.success() {
+            return Err(anyhow!("{}:  operation doesn't success", output.status));
+        }
+
+        Ok(output.status)
     }
 }
 
