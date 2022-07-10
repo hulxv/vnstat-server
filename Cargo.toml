@@ -3,7 +3,7 @@ name = "vns"
 version = "0.1.0"
 edition = "2021"
 authors = ["Mohamed Emad (hulxxv@gmail.com)"]
-description = "Server for vnStat network traffic monitor"
+description = "Serve your vnStat data and controlling in it easily by HTTP requests "
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace] 
 members = [
