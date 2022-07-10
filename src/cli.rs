@@ -1,7 +1,14 @@
 use clap::{Parser, Subcommand};
 use std::fmt::Display;
 #[derive(Parser, Debug)]
-#[clap(author, version, about)]
+#[clap(
+    author,
+    version,
+    about = "
+a Utility used by the end-user to control in vnStat HTTP server efficiently and easily by commmunicate with vnsd by unix-socket.
+"
+)]
+
 pub struct Args {
     #[clap(subcommand)]
     pub commands: Option<Commands>,
@@ -9,7 +16,40 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// To control your vns server
+    #[clap(override_help = "
+ To controlling in your vns HTTP server.
+
+USAGE:
+    vns server <COMMAND>
+
+OPTIONS:
+    -h, --help    Print help information
+
+COMMANDS:
+    help        
+        Print this message or the help of the given subcommand(s)
+    list <connections|block>
+        get list of blocks or connections in vns HTTP server.
+    pause       
+        Pause accepting incoming connections. May drop socket pending connection. All
+        open connections remain active.
+
+    resume      
+        Resume accepting incoming connections.
+
+    shutdown    
+        Shutdown server. You will need to restart vns daemon to running the server again.
+
+    status      
+        Get vns HTTP server status.
+
+    block <LIST_OF_IP_ADDRESSES>
+        Block specific ip address to disallow using HTTP server.
+
+    un-block <LIST_OF_IP_ADDRESSES>  
+        un-Block specific ip address that was blocked and allow using HTTP server again.
+")]
+    /// To controlling in your vns HTTP server.
     Server {
         #[clap(subcommand)]
         command: ServerCommands,
@@ -49,6 +89,13 @@ pub enum ServerCommands {
         #[clap(required = true, value_parser)]
         addresses: Vec<String>,
     },
+    #[clap(override_help = "
+USAGE:
+    vns server list <connections | block>
+
+OPTIONS:
+    -h, --help    Print help information
+")]
     List {
         #[clap(subcommand)]
         list: List,
