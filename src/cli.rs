@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{clap_derive::ArgEnum, Parser, Subcommand};
 use std::fmt::Display;
 #[derive(Parser, Debug)]
 #[clap(
@@ -16,39 +16,39 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    #[clap(override_help = "
- To controlling in your vns HTTP server.
+    //     #[clap(override_help = "
+    //  To controlling in your vns HTTP server.
 
-USAGE:
-    vns server <COMMAND>
+    // USAGE:
+    //     vns server <COMMAND>
 
-OPTIONS:
-    -h, --help    Print help information
+    // OPTIONS:
+    //     -h, --help    Print help information
 
-COMMANDS:
-    help        
-        Print this message or the help of the given subcommand(s)
-    list <connections|block>
-        get list of blocks or connections in vns HTTP server.
-    pause       
-        Pause accepting incoming connections. May drop socket pending connection. All
-        open connections remain active.
+    // COMMANDS:
+    //     help
+    //         Print this message or the help of the given subcommand(s)
+    //     list <connections|block>
+    //         get list of blocks or connections in vns HTTP server.
+    //     pause
+    //         Pause accepting incoming connections. May drop socket pending connection. All
+    //         open connections remain active.
 
-    resume      
-        Resume accepting incoming connections.
+    //     resume
+    //         Resume accepting incoming connections.
 
-    shutdown    
-        Shutdown server. You will need to restart vns daemon to running the server again.
+    //     shutdown
+    //         Shutdown server. You will need to restart vns daemon to running the server again.
 
-    status      
-        Get vns HTTP server status.
+    //     status
+    //         Get vns HTTP server status.
 
-    block <LIST_OF_IP_ADDRESSES>
-        Block specific ip address to disallow using HTTP server.
+    //     block <IP_ADDRESSESS>...
+    //         Block specific ip address to disallow using HTTP server.
 
-    un-block <LIST_OF_IP_ADDRESSES>  
-        un-Block specific ip address that was blocked and allow using HTTP server again.
-")]
+    //     un-block <IP_ADDRESSES>...
+    //         un-Block specific ip address that was blocked and allow using HTTP server again.
+    // ")]
     /// To controlling in your vns HTTP server.
     Server {
         #[clap(subcommand)]
@@ -89,19 +89,19 @@ pub enum ServerCommands {
         #[clap(required = true, value_parser)]
         addresses: Vec<String>,
     },
-    #[clap(override_help = "
-USAGE:
-    vns server list <connections | block>
+    //     #[clap(override_help = "
+    // USAGE:
+    //     vns server list <connections | block>
 
-OPTIONS:
-    -h, --help    Print help information
-")]
+    // OPTIONS:
+    //     -h, --help    Print help information
+    // ")]
     List {
-        #[clap(subcommand)]
+        #[clap(arg_enum)]
         list: List,
     },
 }
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Subcommand)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ArgEnum)]
 pub enum List {
     Connections,
     Block,
@@ -110,8 +110,6 @@ pub enum List {
 impl Display for ServerCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            // ServerCommands::Run {} => write!(f, "run"),
-            // ServerCommands::Restart => write!(f, "restart"),
             ServerCommands::Shutdown => write!(f, "shutdown"),
             ServerCommands::Status => write!(f, "status"),
             ServerCommands::Pause => write!(f, "pause"),

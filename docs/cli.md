@@ -7,7 +7,7 @@ a Utility used by the end-user to control in HTTP server efficiently and easily 
 - help
 
   ```
-  vns 0.1.0
+    vns x.y.z
     Mohamed Emad (hulxxv@gmail.com)
 
     a Utility used by the end-user to control in vnStat HTTP server efficiently and easily by
@@ -48,34 +48,21 @@ a Utility used by the end-user to control in HTTP server efficiently and easily 
 
     - Usage:
       ```
-      $ vns server <COMMAND>
+      $ vns server <SUBCOMMAND>
       ```
     - Commands:
 
-      ```
-      help
-          Print this message or the help of the given subcommand(s)
-      list <connections|block>
-          get list of blocks or connections in vns HTTP server.
-      pause
-          Pause accepting incoming connections. May drop socket pending connection. All
-          open connections remain active.
-
-      resume
-          Resume accepting incoming connections.
-
-      shutdown
-          Shutdown server. You will need to restart vns daemon to running the server again.
-
-      status
-          Get vns HTTP server status.
-
-      block <LIST_OF_IP_ADDRESSES>
-          Block specific ip address to disallow using HTTP server.
-
-      un-block <LIST_OF_IP_ADDRESSES>
-          un-Block specific ip address that was blocked and allow using HTTP server again.
-      ```
+    ```
+    block       Block specific ip address to disallow using HTTP server
+    help        Print this message or the help of the given subcommand(s)
+    list
+    pause       Pause accepting incoming connections. May drop socket pending connection. All
+                    open connections remain active
+    resume      Resume accepting incoming connections
+    shutdown    Shutdown server. You will need to restart vns daemon to running the server again
+    status      Get server status
+    un-block    un-Block specific ip address that was blocked and allow using HTTP server again
+    ```
 
 ## vnsd (vnStat Server Daemon)
 
