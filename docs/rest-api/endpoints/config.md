@@ -40,7 +40,7 @@ edit vnStat configuration
     --header 'Content-Type: application/json' \
     --data-raw '[
         {
-            "key": "$KEY",       // Ex: "HourlyDays"
+            "prop": "$PROPERTY",       // Ex: "HourlyDays"
             "value" "$NEW_VALUE" // Ex: "-1"
         },
     ]'

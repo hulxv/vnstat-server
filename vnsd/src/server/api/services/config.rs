@@ -24,7 +24,7 @@ pub async fn get_config() -> HttpResponse {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Payload {
-    pub key: String,
+    pub prop: String,
     pub value: String,
 }
 
@@ -40,7 +40,7 @@ pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
     }
     match VnStat
         .config()
-        .set_prop(&payload.clone().key, &payload.clone().value)
+        .set_prop(&payload.clone().prop, &payload.clone().value)
         .await
     {
         Ok(exit_status) => {
@@ -48,7 +48,7 @@ pub async fn edit_config(payload: web::Json<Payload>) -> HttpResponse {
             HttpResponse::Ok().json(
                 Response::new()
                     .status(ResponseStatus::Success)
-                    .data(json!({ payload.clone().key: payload.clone().value }))
+                    .data(json!({ payload.clone().prop: payload.clone().value }))
                     .build(),
             )
         }
