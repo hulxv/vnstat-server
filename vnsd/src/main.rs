@@ -1,8 +1,7 @@
 use app::{Configs, Logger};
+use clap::Parser;
 use log::{error, info, warn};
 use serde_json;
-
-use clap::Parser;
 use tokio::{self, spawn};
 use utils::unix_socket::{Request, Response, UnixSocket};
 use vnsd::{
@@ -10,6 +9,7 @@ use vnsd::{
     server::{Server, ServerAddr},
     uds_request_handler::RequestHandler,
 };
+
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
