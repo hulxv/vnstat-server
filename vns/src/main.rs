@@ -142,10 +142,10 @@ fn handle_response(command: ServerCommands, res: Response) {
                 println!(
                     "[{}] {}",
                     match message.status {
-                        ServerResponseStatus::Failed => "Failed".red().bold(),
-                        ServerResponseStatus::Success => "Success".green().bold(),
+                        ServerResponseStatus::Failed => "Failed".red(),
+                        ServerResponseStatus::Success => "Success".green(),
                     },
-                    message.body.bold()
+                    message.body
                 );
             }
         }
