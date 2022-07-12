@@ -9,7 +9,7 @@
 
 - Easy to use
 - Very speed HTTP server (Built with [actix.rs](https://actix.rs))
-- Lightwhight
+- Lightweight
 - Secure
 - Configurable
 

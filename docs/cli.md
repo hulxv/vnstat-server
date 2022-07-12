@@ -11,7 +11,7 @@ a Utility used by the end-user to control in HTTP server efficiently and easily 
     Mohamed Emad (hulxxv@gmail.com)
 
     a Utility used by the end-user to control in vnStat HTTP server efficiently and easily by
-    commmunicate with vnsd by unix-socket.
+    communicate with vnsd by unix-socket.
 
     USAGE:
         vns [SUBCOMMAND]
