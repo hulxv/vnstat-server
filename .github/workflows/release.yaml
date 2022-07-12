@@ -26,12 +26,22 @@ jobs:
         include:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
+            tool: cross
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            tool: cargo
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+        if: startsWith(matrix.os, 'ubuntu')
+      - name: Install deps
+        run: |
+          sudo apt-get install libsqlite3-dev
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -45,6 +55,7 @@ jobs:
           bin: vns,vnsd
           include: LICENSE
           target: ${{ matrix.target }}
-          archive: vns-$tag-$target
+          build_tool: ${{ matrix.tool }}
+          archive: vnstat-server-$tag-$target
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
