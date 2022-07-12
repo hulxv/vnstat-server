@@ -5,7 +5,7 @@ use std::fmt::Display;
     author,
     version,
     about = "
-a Utility used by the end-user to control in vnStat HTTP server efficiently and easily by commmunicate with vnsd by unix-socket.
+a Utility used by the end-user to control in vnStat HTTP server efficiently and easily by communicate with vnsd by unix-socket.
 "
 )]
 
@@ -43,7 +43,7 @@ pub enum Commands {
     //     status
     //         Get vns HTTP server status.
 
-    //     block <IP_ADDRESSESS>...
+    //     block <IP_ADDRESSES>...
     //         Block specific ip address to disallow using HTTP server.
 
     //     un-block <IP_ADDRESSES>...

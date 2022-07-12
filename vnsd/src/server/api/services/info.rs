@@ -15,8 +15,7 @@ pub async fn get_info() -> HttpResponse {
 
         Err(err) => {
             error!("{err}");
-
-            HttpResponse::InternalServerError().json(ResponseError::new().details("There's an internal server error happend, Please check 'vns' logs for more details").build())
+            HttpResponse::InternalServerError().json(ResponseError::new().build())
         }
     }
 }

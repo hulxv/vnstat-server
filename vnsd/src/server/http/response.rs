@@ -95,7 +95,7 @@ impl ResponseErrorBuilder {
             status: ResponseStatus::Failed,
             data: ResponseError {
                 code: self.code.unwrap_or(500),
-                details: self.details.clone().unwrap_or( "There's an internal server error happend, Please check 'vns' logs for more details".to_owned()
+                details: self.details.clone().unwrap_or( "There's an internal server error happened, Please check 'vns' logs for more details".to_owned()
                    ),
             },
         }.clone()

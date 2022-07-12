@@ -65,7 +65,7 @@ impl UnixSocket {
         }
     }
 
-    /// Recieve messages from stream
+    /// Receive messages from stream
     pub async fn receive(&mut self) -> Result<String> {
         loop {
             if self.side.eq(&UnixSocketSide::Server) {

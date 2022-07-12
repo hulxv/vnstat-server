@@ -21,7 +21,7 @@ impl Logger {
                 time_style.set_color(Color::Rgb(255, 165, 0));
 
                 if record.level().eq(&Level::Error) {
-                    // Wrtie to stderr
+                    // Write to stderr
                     eprintln!(
                         "⌜{}⌟ {} : {} \n\t {} \n\t {}",
                         buf.timestamp().to_string().bright_yellow(),

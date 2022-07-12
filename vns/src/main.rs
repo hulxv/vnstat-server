@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     select!(
                         _ = async {
                             match socket.receive().await {
-                                Err(e) => error!("Cannot recieve response from unix server: {e}"),
+                                Err(e) => error!("Cannot receive response from unix server: {e}"),
                                 Ok(res) => {
                                     let res = serde_json::from_str::<Response>(&res).unwrap();
                                     handle_response(command, res);
