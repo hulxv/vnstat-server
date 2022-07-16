@@ -3,7 +3,16 @@ pub mod http;
 
 use api::{auth::Auth, services};
 use app;
+use http::response::ResponseError;
 
+use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
+use actix_web::{
+    error,
+    middleware::Logger,
+    web::{self, route},
+    App, HttpResponse, HttpServer,
+};
+use actix_web_httpauth::middleware::HttpAuthentication;
 use std::{
     error::Error as ErrorTrait,
     io::Result as IOResult,
@@ -14,14 +23,6 @@ use std::{
         Arc, Mutex,
     },
 };
-
-use actix_server::{Server as ActixServer, ServerHandle as ActixServerHandle};
-use actix_web::{
-    middleware::Logger,
-    web::{self, route},
-    App, HttpServer,
-};
-use actix_web_httpauth::middleware::HttpAuthentication;
 #[derive(Clone)]
 pub struct ServerHandlingError {
     cause: String,
@@ -184,7 +185,14 @@ pub struct ServerRunner;
 impl ServerRunner {
     pub fn new(addr: ServerAddr) -> IOResult<ActixServer> {
         match HttpServer::new(|| {
-            App::new()
+            App::new().app_data(web::JsonConfig::default().error_handler(|err,_| {
+                error::InternalError::from_response(err.to_string().clone(), HttpResponse::BadRequest().json(
+                    ResponseError::new()
+                        .code(400)
+                        .details(&err.to_string())
+                        .build()
+                 )).into()
+            }))
             .wrap(Logger::new(
                 "[%s] (%r %a) \n  ip: %{r}a\n  time: %Ts,\n  pid: %P,\n  user-agent: %{User-Agent}i,\n  content-type: %{Content-Type}i,\n  size: %bb",
             ))
