@@ -1,6 +1,6 @@
 [package]
 name = "vnstat-server"
-version = "1.0.0-beta"
+version = "1.0.0-stable"
 edition = "2021"
 authors = ["Mohamed Emad (hulxxv@gmail.com)"]
 description = "Serve your vnStat data and controlling in it easily by HTTP requests" 
