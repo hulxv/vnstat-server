@@ -1,8 +1,11 @@
+[build.env]
+passthrough = ["CARGO_INCREMENTAL"]
+
 [target.aarch64-unknown-linux-gnu]
-pre-build = "apt install -y sqlite3 libsqlite3-dev"
+pre-build = ["apt install -y sqlite3 libsqlite3-dev"]
 [target.arm-unknown-linux-gnueabihf]
-pre-build = "apt install -y sqlite3 libsqlite3-dev"
+pre-build = ["apt install -y sqlite3 libsqlite3-dev"]
 [target.armv7-unknown-linux-gnueabihf]
-pre-build = "apt install -y sqlite3 libsqlite3-dev"
+pre-build = ["apt install -y sqlite3 libsqlite3-dev"]
 [target.x86_64-unknown-linux-gnu]
-pre-build = "apt install -y sqlite3 libsqlite3-dev"
+pre-build = ["apt install -y sqlite3 libsqlite3-dev"]
