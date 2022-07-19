@@ -2,7 +2,7 @@
 passthrough = ["CARGO_INCREMENTAL"]
 
 [target.aarch64-unknown-linux-gnu]
-pre-build = ["apt install -y sqlite3:arm64 libsqlite3-dev:arm64"]
+pre-build = ["apt install -y sqlite3:amd64 libsqlite3-dev:amd64"]
 
 [target.x86_64-unknown-linux-gnu]
 pre-build = ["apt install -y sqlite3 libsqlite3-dev"]
