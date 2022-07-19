@@ -1,3 +1,5 @@
+use app::MainDirectory;
+
 mod model;
 mod query;
 pub mod schema;
@@ -6,19 +8,17 @@ mod tests;
 pub use model::*;
 use query::*;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use diesel::{
     dsl::sql_query,
     prelude::{Connection, SqliteConnection},
     RunQueryDsl,
 };
-use dirs::config_dir;
 use std::{
     fs::{create_dir_all, File},
     path::Path,
 };
 
-// #[derive(Clone)]
 pub struct InitDatabase {
     pub conn: SqliteConnection,
 }
@@ -26,14 +26,17 @@ pub struct InitDatabase {
 /// Initialization of the authentication database, i.e. its creation and creation of its tables
 impl InitDatabase {
     pub fn connect() -> Result<Self> {
+        let path = match DatabaseFile::new()?.create_if_not_exists() {
+            Err(e) => {
+                return Err(anyhow!(std::io::Error::new(
+                    e.downcast_ref::<std::io::Error>().unwrap().kind(),
+                    format!("Cannot create database file: {e}")
+                )))
+            }
+            Ok(f) => f.path(),
+        };
         Ok(Self {
-            conn: SqliteConnection::establish(
-                &DatabaseFile::new()
-                    .unwrap()
-                    .create_if_not_exists()
-                    .unwrap()
-                    .path(),
-            )?,
+            conn: SqliteConnection::establish(&path)?,
         })
     }
 
@@ -73,37 +76,27 @@ impl InitDatabase {
 }
 
 pub struct DatabaseFile {
-    path: String,
+    file_name: String,
+    dir: String,
 }
 impl DatabaseFile {
     pub fn new() -> Result<Self> {
-        let database_dir = [
-            match std::env::var("SUDO_USER") {
-                Ok(_) => "/etc".to_owned(),
-                Err(_) => config_dir()
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            },
-            "/vns/database".to_owned(),
-        ]
-        .concat();
-        if !Path::new(&database_dir).exists() {
-            create_dir_all(database_dir.clone()).unwrap();
-        }
         Ok(Self {
-            path: [database_dir, "/auth.db".to_owned()].concat(),
+            file_name: "auth.db".to_owned(),
+            dir: [MainDirectory::get()?, "/database".to_owned()].concat(),
         })
     }
 
     pub fn create_if_not_exists(&self) -> Result<&Self> {
-        if !Path::new(&self.path).exists() {
-            File::create(&self.path)?;
+        if !Path::new(&self.dir).exists() {
+            create_dir_all(&self.dir)?;
+        }
+        if !Path::new(&self.path()).exists() {
+            File::create(&self.path())?;
         }
         Ok(self)
     }
     pub fn path(&self) -> String {
-        self.path.clone()
+        [self.dir.clone(), "/".to_owned(), self.file_name.clone()].concat()
     }
 }

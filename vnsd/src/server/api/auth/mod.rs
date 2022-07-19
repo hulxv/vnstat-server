@@ -99,7 +99,7 @@ impl Auth {
         user_agent: &str,
     ) -> Result<AuthResponse, AuthErrors> {
         if Configs::init().unwrap().auth().password().eq(password) {
-            let db = InitDatabase::connect().unwrap();
+            let db = InitDatabase::connect().map_err(|e| error!("{e}")).unwrap();
             db.init().map_err(|e| error!("{e}")).unwrap();
 
             if BlockList::is_blocked(db.conn(), ip_addr) {

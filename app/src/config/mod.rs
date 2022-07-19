@@ -1,13 +1,11 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use derivative::Derivative;
-use dirs;
 use serde_derive::{Deserialize, Serialize};
-use std::{
-    fs,
-    io::{Error, ErrorKind::NotFound},
-};
+use std::fs;
 use toml::value::Value;
 use utils::file::File;
+
+use crate::MainDirectory;
 
 pub mod auth;
 pub mod security;
@@ -52,14 +50,12 @@ impl Configs {
 
     pub fn init() -> Result<Self> {
         let path = Self::get_file_path()?;
-        let _ = match File::new(path.clone()).exists() {
-            false => File::new(path.clone()).create(Self::default().to_string()?),
-            _ => Ok(()),
+        let file = File::new(path.clone());
+        if !file.exists() {
+            file.create(Self::default().to_string()?)?;
         };
 
-        Ok(toml::from_str(
-            fs::read_to_string(Self::get_file_path()?)?.as_str(),
-        )?)
+        Ok(toml::from_str(fs::read_to_string(path)?.as_str())?)
     }
 
     pub fn reset() -> Result<()> {
@@ -112,21 +108,7 @@ impl Configs {
     }
 
     pub fn get_file_path() -> Result<String> {
-        let config_dir: String;
-        if std::env::var("SUDO_USER").is_ok() {
-            config_dir = "/etc".to_owned();
-        } else {
-            config_dir = match dirs::config_dir() {
-                Some(path) => path.into_os_string().into_string().unwrap(),
-                None => {
-                    return Err(anyhow!(Error::new(
-                        NotFound,
-                        "Can't find \"~/.config\" directory".to_owned(),
-                    )))
-                }
-            };
-        }
-        Ok([config_dir, "/vns/vns.conf.toml".to_owned()].concat())
+        Ok([MainDirectory::get()?, "/config.toml".to_owned()].concat())
     }
 
     pub fn vnstat(&self) -> VnstatConfigs {
