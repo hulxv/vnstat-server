@@ -2,6 +2,7 @@ use colored::Colorize;
 use env_logger::{self, fmt::Color, Builder, Target::Stdout};
 use log::Level;
 use std::io::Write;
+use colorful::{Colorful, RGB};
 pub struct Logger;
 
 impl Logger {

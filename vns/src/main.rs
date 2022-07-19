@@ -2,7 +2,7 @@ use std::{str::FromStr, time::Duration};
 
 use app::{log::Logger, UDS_ADDRESS};
 use clap::Parser;
-use colored::Colorize;
+use colorful::Colorful;
 use comfy_table::{presets::UTF8_FULL, Table};
 use log::{error, warn};
 use serde_derive::Deserialize;
