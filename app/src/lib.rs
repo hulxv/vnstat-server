@@ -7,6 +7,7 @@ pub use config::*;
 use anyhow::{anyhow, Result};
 use std::io::{Error, ErrorKind::NotFound};
 
+pub const UDS_ADDRESS: &str = "/tmp/vnstat-server.sock";
 
 /// To get main directory
 ///

@@ -1,4 +1,4 @@
-use app::{Configs, Logger};
+use app::{Configs, Logger, UDS_ADDRESS};
 use clap::Parser;
 use log::{error, info, warn};
 use serde_json;
@@ -9,7 +9,6 @@ use vnsd::{
     server::{Server, ServerAddr},
     uds_request_handler::RequestHandler,
 };
-
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
@@ -24,14 +23,13 @@ async fn main() -> std::process::ExitCode {
     };
     let configs = Configs::init().unwrap();
 
-    let sock_path = "/tmp/vnsd.sock";
-    let mut listener = match UnixSocket::bind(sock_path) {
+    let mut listener = match UnixSocket::bind(UDS_ADDRESS) {
         Err(e) => {
             error!("Cannot bind unix server: {e}");
             std::process::exit(1);
         }
         Ok(lis) => {
-            info!("uds listening on '{sock_path}'");
+            info!("uds listening on '{UDS_ADDRESS}'");
             lis
         }
     };

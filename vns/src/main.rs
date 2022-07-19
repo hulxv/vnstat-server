@@ -1,6 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
-use app::log::Logger;
+use app::{log::Logger, UDS_ADDRESS};
 use clap::Parser;
 use colored::Colorize;
 use comfy_table::{presets::UTF8_FULL, Table};
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.commands {
         Some(Commands::Server { command }) => {
-            let mut socket = UnixSocket::connect("/tmp/vnsd.sock")
+            let mut socket = UnixSocket::connect(UDS_ADDRESS)
                 .await
                 .map_err(|e| error!("{e}"))
                 .unwrap();
@@ -63,7 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
         }
         None => {
-            warn!("use --help flag to show available commands")
+            println!(
+                "hint: use {} flag to show available commands",
+                "--help".yellow().bold()
+            )
         }
     }
 
