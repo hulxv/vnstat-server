@@ -71,9 +71,9 @@ priority = "optional"
 assets = [
     ["target/release/vns", "usr/bin/", "755"],
     ["target/release/vnsd", "usr/bin/", "755"],
-    ["docs/", "usr/share/vnstat-server/", "755"],
+    ["docs/*", "usr/share/vnstat-server/docs/", "755"],
     ["README.md", "usr/share/vnstat-server/", "644"],
-    ["License", "usr/share/vnstat-server/", "644"],
+    ["LICENSE", "usr/share/vnstat-server/", "644"],
     ["systemd/vnstat-server.service", "/etc/systemd/system/vnstat-server.service", "644"]
 
 ]
