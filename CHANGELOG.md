@@ -2,16 +2,23 @@
 
 ## 1.0.0-stable
 
-### Features
+> 20 July 2022
+
+### Add
 
 - add 'vns-version' to "/api/info" response
 - handling json deserialization errors
+- add .deb package
+- support systemd logging style
 
-### Fixs
+### Fix
 
 - negative values with bit integers
+- unexpected configuration path when running with systemd unit service
 
 ## 1.0.0-beta
+
+> 12 July 2022
 
 ### Features
 
