@@ -24,6 +24,7 @@ ProtectSystem=yes
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
+Environment=VNS_LOGGIN_STYLE=SYSTEMD
 
 [Install]
 WantedBy=multi-user.target
