@@ -84,7 +84,7 @@ jobs:
         run: >
           echo "install -Dm755 ./vns ./vnsd /usr/bin" > "install.sh"
           tar -cv
-          install.sh LICENSE README.md
+          install.sh LICENSE README.md ./docs/
           -C target/${{ matrix.target }}/release/ vns vnsd
           | gzip --best
           > 'vnstat-server-${{ steps.get_version.outputs.value }}-${{ matrix.target }}.tar.gz'
