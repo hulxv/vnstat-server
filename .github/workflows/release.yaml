@@ -82,8 +82,9 @@ jobs:
 
       - name: Package (*nix)
         run: >
+          echo "install -Dm755 ./vns ./vnsd /usr/bin" > "install.sh"
           tar -cv
-          LICENSE README.md
+          install.sh LICENSE README.md
           -C target/${{ matrix.target }}/release/ vns vnsd
           | gzip --best
           > 'vnstat-server-${{ steps.get_version.outputs.value }}-${{ matrix.target }}.tar.gz'
@@ -96,6 +97,7 @@ jobs:
             *.deb
             *.tar.gz
             *.zip
+            systemd/vnstat-server.service
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
@@ -104,4 +106,5 @@ jobs:
             *.deb
             *.tar.gz
             *.zip
+            systemd/vnstat-server.service
           name: ${{ steps.get_version.outputs.value }}
