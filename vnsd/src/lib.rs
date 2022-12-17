@@ -7,6 +7,7 @@ extern crate diesel;
 pub mod cli;
 pub mod server;
 pub mod uds_request_handler;
+pub mod utils;
 
 pub use cli::Args;
 pub use server::{api, http};

@@ -60,7 +60,7 @@ impl Logger {
                             // Write to stdout (default)
                             _ => writeln!(
                                 buf,
-                                "⌜{}⌟{ } : {}",
+                                "⌜{}⌟ {} : {}",
                                 time_style.value(buf.timestamp()),
                                 level_style.value(record.level()),
                                 record.args().to_string().trim()

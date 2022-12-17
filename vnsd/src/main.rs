@@ -8,6 +8,7 @@ use vnsd::{
     cli::Args,
     server::{Server, ServerAddr},
     uds_request_handler::RequestHandler,
+    utils::terminate_process,
 };
 
 #[tokio::main]
@@ -41,11 +42,10 @@ async fn main() -> std::process::ExitCode {
     .unwrap();
 
     spawn(async move {
-        tokio::signal::ctrl_c()
+        terminate_process()
             .await
             .map_err(|e| error!("{e}"))
-            .is_ok()
-            .then(|| std::process::exit(0));
+            .unwrap();
     });
     let _: (_, Result<(), anyhow::Error>) = tokio::join!(
         // Running HTTP server
