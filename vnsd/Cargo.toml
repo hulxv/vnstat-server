@@ -1,6 +1,6 @@
 [package]
 name = "vnsd"
-version = "1.0.0-stable"
+version = "1.0.1-beta"
 edition = "2021"
 authors = ["Mohamed Emad (hulxxv@gmail.com)"]
 description = "vnStat Server daemon"
